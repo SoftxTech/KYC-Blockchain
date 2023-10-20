@@ -101,11 +101,20 @@ contract KYC {
         addPerson(_fname, _lname, _name, _id, Roles.Admin, msg.sender);
     }
 
+    modifier OnlyAdmin(uint256 id) {
+        Roles role = people[id].role;
+        if (role != Roles.Admin) {
+            revert KYC__NOT_Have_Access();
+        }
+        _;
+    }
+
     // functions:
     //**  1. Add overloading Person */
     // TODO : if admin , init hash, normal user later.
     // Mandatory -> Email?
     function addPerson(
+        uint256 cid,
         string memory _fname,
         string memory _lname,
         string memory _name,
@@ -113,8 +122,12 @@ contract KYC {
         uint256 _bod,
         Gender _gender,
         Roles _role
-    ) public {
-        // mandatory
+    ) public OnlyAdmin(cid) {
+        require(_id > 0, "ID must be greater than zero");
+        // Check if the ID already exists
+        require(people[_id].NID == 0, "ID already exists");
+
+        // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
         person.fName = _fname;
@@ -128,8 +141,10 @@ contract KYC {
             person = hashLogInInfo(_id, "password", person);
             users[users.length] = Strings.toString(_id);
         }
-        person = grantPermission(person);
+        Permissions _permission = grantPermission(_role);
+        person.permission = _permission;
         nationalIDs.push(_id); // prevent dublicate
+        // Add the new person to the mapping
         people[_id] = person;
         emit AddPerson(_id, _name);
     }
@@ -143,6 +158,11 @@ contract KYC {
         Roles _role,
         address _wallet
     ) public {
+        require(_id > 0, "ID must be greater than zero");
+        // Check if the ID already exists
+        require(people[_id].NID == 0, "ID already exists");
+
+        // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
         person.fName = _fname;
@@ -150,13 +170,15 @@ contract KYC {
         person.fullName = _name; // get fname , lname
         person.role = _role;
         // other fileds will be default values
-        person = grantPermission(person);
+        Permissions _permission = grantPermission(_role);
+        person.permission = _permission;
         if (_role == Roles.Admin) {
             person = hashLogInInfo(_id, "password", person);
             users[users.length] = Strings.toString(_id);
         }
         person.person_wallet_address = payable(_wallet);
         nationalIDs.push(_id); // prevent dublicate
+        // Add the new person to the mapping
         people[_id] = person;
         emit AddPerson(_id, _name);
     }
@@ -180,7 +202,6 @@ contract KYC {
         person.gender = _gender;
         person.role = Roles.Non; // defualt values for unmentioned
         // other fileds will be default values
-        person = grantPermission(person);
         nationalIDs.push(_id); // prevent dublicate
         people[_id] = person;
         emit AddPerson(_id, _name);
@@ -204,7 +225,6 @@ contract KYC {
         person.gender = _gender;
         person.person_wallet_address = payable(_wallet);
         person.role = Roles.Non; // defualt
-        person = grantPermission(person);
         nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
         emit AddPerson(_id, _name);
@@ -370,7 +390,7 @@ contract KYC {
         people[_id].sign.Password = _password;
         people[_id].sign.Email = _email;
 
-        Person memory person = hashLogInInfo(_id, _user, _password);
+        hashLogInInfo(_id, _user, _password);
     }
 
     function EditLogin(
@@ -381,23 +401,22 @@ contract KYC {
         people[_id].sign.Password = _password;
         people[_id].sign.Email = _email;
         string memory _user = people[_id].sign.UserName;
-        Person memory person = hashLogInInfo(_id, _user, _password);
+        hashLogInInfo(_id, _user, _password);
     }
 
     //**  middle functions */
-    function grantPermission(
-        Person memory person
-    ) private view returns (Person memory) {
-        if (person.role == Roles.Non) {
-            person.permission = Permissions.Non;
-        } else if (person.role == Roles.Admin) {
-            person.permission = Permissions.Full;
-        } else if (person.role == Roles.Co_Admin) {
-            person.permission = Permissions.RW;
-        } else if (person.role == Roles.Editor) {
-            person.permission = Permissions.Write;
-        } else person.permission = Permissions.Read;
-        return person;
+    function grantPermission(Roles _role) private pure returns (Permissions) {
+        if (_role == Roles.Non) {
+            return Permissions.Non;
+        } else if (_role == Roles.Admin) {
+            return Permissions.Full;
+        } else if (_role == Roles.Co_Admin) {
+            return Permissions.RW;
+        } else if (_role == Roles.Editor) {
+            return Permissions.Write;
+        } else {
+            return Permissions.Read;
+        }
     }
 
     // check if user not dublicate
@@ -429,7 +448,7 @@ contract KYC {
         uint256 _id,
         string memory user,
         string memory pass
-    ) private returns (Person memory) {
+    ) private {
         string memory tohashed = concatenateStings(user, pass);
         bytes32 _hash = hashDataSHA(tohashed);
         signIn[_id] = _hash;
@@ -446,6 +465,7 @@ contract KYC {
         signIn[_id] = _hash;
         person.sign.UserName = user;
         person.sign.Password = pass;
+        return person;
     }
 
     // init hashing login
@@ -460,6 +480,7 @@ contract KYC {
         signIn[_id] = _hash; // updateLogin hashing
         person.sign.UserName = user;
         person.sign.Password = pass;
+        return person;
     }
 
     // hashing function
