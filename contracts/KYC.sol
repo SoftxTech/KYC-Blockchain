@@ -33,13 +33,20 @@ contract KYC {
         RW,
         Full // Delete and RW
     }
+    enum Military_status {
+        // could ignore and rely on roles only
+        Non, // uint256 0 -> non
+        Done,
+        In
+    }
+
     struct Person {
         uint256 NID; // check if could remove
         string fName;
         string lName;
-        string fullName; // 4th
+        string fullName; // to 4th
         address payable person_wallet_address; // added manually by admins and editors?
-        bytes avatar;
+        bytes avatar; // verify idententy
         bytes image_id;
         uint license_number;
         bytes license_image; // check valid with AI
@@ -47,8 +54,10 @@ contract KYC {
         uint256 bod; // time stamp of birthdate
         Gender gender;
         Roles role; // in contract
-        Permissions permission;
+        Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string[] phone_number;
+        string email; // an array?
+        Login sign;
         string[] education;
         string[] experiance; // job and other like an CV
         string[] intrests;
@@ -56,57 +65,191 @@ contract KYC {
         uint256 father_id;
         uint256 mother_id;
         string home_address;
-        // add militry status
+        string passport;
+        Military_status ms;
+    }
+
+    struct Login {
+        string UserName;
+        string Password;
+        string Email;
     }
     // storage vs memory
     mapping(uint256 => Person) public people; // link person to his id
+    mapping(uint256 => string) public signIn; // hashed login info
 
     // State Variables
     address payable public immutable i_owner;
-    Person[] private persons;
-    uint public unlockTime;
-
+    uint256[] private nationalIDs; // keys - prevent dublicate
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
 
-    constructor(uint _unlockTime) payable {
-        require(
-            block.timestamp < _unlockTime,
-            "Unlock time should be in the future"
-        );
-
-        unlockTime = _unlockTime;
+    constructor() payable {
         i_owner = payable(msg.sender);
     }
 
-    // functions
-    function addPerson(string memory _name, uint256 _id) public {
+    // functions:
+    // 1. Add overloading Person
+    // TODO : if admin , init hash ,normal user later.
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender
+    ) public {
         // mandatory
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
-        person.fullName = _name;
-        person.role = Roles.Non; // defualt
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name; // get fname , lname
+        person.bod = _bod;
+        person.gender = _gender;
+        person.role = Roles.Non; // defualt values for unmentioned
         // other fileds will be default values
-        persons.push(person);
+        person = grantPermission(person);
+        nationalIDs.push(_id); // prevent dublicate
         people[_id] = person;
+        emit AddPerson(_id, _name);
     }
 
-    // overloading
     function addPerson(
+        string memory _fname,
+        string memory _lname,
         string memory _name,
         uint256 _id,
-        address wallet
+        uint256 _bod,
+        Gender _gender,
+        address _wallet
     ) public {
         Person memory person;
         person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
         person.fullName = _name;
-        person.person_wallet_address = payable(wallet);
+        person.bod = _bod;
+        person.gender = _gender;
+        person.person_wallet_address = payable(_wallet);
         person.role = Roles.Non; // defualt
-        persons.push(person); // working with index
+        person = grantPermission(person);
+        nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
     }
 
-    function givePermission(
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender,
+        address _wallet,
+        string[] memory mobile
+    ) public {
+        Person memory person;
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name;
+        person.bod = _bod;
+        person.gender = _gender;
+        person.person_wallet_address = payable(_wallet); // not msg.sender
+        person.phone_number = mobile;
+        person.role = Roles.Non; // defualt
+        nationalIDs.push(_id); // working with index
+        people[_id] = person; // working with id
+    }
+
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender,
+        address _wallet,
+        string[] memory mobile,
+        uint256 licence
+    ) public {
+        Person memory person;
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name;
+        person.bod = _bod;
+        person.gender = _gender;
+        person.person_wallet_address = payable(_wallet); // not msg.sender
+        person.phone_number = mobile;
+        person.license_number = licence;
+        person.role = Roles.Non; // defualt
+        nationalIDs.push(_id); // working with index
+        people[_id] = person; // working with id
+    }
+
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender,
+        address _wallet,
+        string[] memory mobile,
+        uint256 licence,
+        string memory _address
+    ) public {
+        Person memory person;
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name;
+        person.bod = _bod;
+        person.gender = _gender;
+        person.person_wallet_address = payable(_wallet); // not msg.sender
+        person.phone_number = mobile;
+        person.license_number = licence;
+        person.home_address = _address;
+        person.role = Roles.Non; // defualt
+        nationalIDs.push(_id); // working with index
+        people[_id] = person; // working with id
+    }
+
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender,
+        address _wallet,
+        string[] memory mobile,
+        uint256 licence,
+        string memory _address,
+        uint256 fid,
+        uint256 mid
+    ) public {
+        Person memory person;
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name;
+        person.bod = _bod;
+        person.gender = _gender;
+        person.person_wallet_address = payable(_wallet); // not msg.sender
+        person.phone_number = mobile;
+        person.license_number = licence;
+        person.home_address = _address;
+        person.father_id = fid;
+        person.mother_id = mid;
+        person.role = Roles.Non; // defualt
+        nationalIDs.push(_id); // working with index
+        people[_id] = person; // working with id
+    }
+
+    // 2.
+    function grantPermission(
         Person memory person
     ) private pure returns (Person memory) {
         if (person.role == Roles.Non) {
@@ -121,12 +264,62 @@ contract KYC {
         return person;
     }
 
+    // 3. update and add data
+    function addEdu(uint id, string memory _education) public {
+        //Person p = people[id];
+        // p.education.push(_education);
+        people[id].education.push(_education);
+    }
+
+    function addExp(uint id, string memory _experiance) public {
+        people[id].experiance.push(_experiance);
+    }
+
+    function addMob(uint id, string memory _mobile) public {
+        people[id].phone_number.push(_mobile);
+    }
+
+    function addBankAccount(uint id, uint256 _bank_Accounts) public {
+        people[id].bank_Accounts.push(_bank_Accounts);
+    }
+
+    function addCertificate(uint id, bytes memory _certificate) public {
+        people[id].certificates.push(_certificate);
+    }
+
+    function addIntrest(uint id, string memory _interest) public {
+        people[id].intrests.push(_interest);
+    }
+
+    function updateLogin(uint id, string memory _hash) public {
+        signIn[id] = _hash;
+    }
+
+    // middle functions
+    /*
+    function searchField(address fieldValue) external view returns (uint256) {
+        for (uint256 i = 0; i < nationalIDs.length; i++) {
+            uint256 key = nationalIDs[i];
+            Person memory person = people[key];
+            if (person.person_wallet_address == fieldValue) {
+                return person.NID;
+            }
+        }
+
+        return 0;
+    }
+    */
+
     // view / pure functions (getters)
     function getPerson(uint id) public view returns (Person memory) {
         return people[id];
     }
 
-    function getPersons(uint index) public view returns (Person memory) {
-        return persons[index];
+    function getNumberOfPersons() public view returns (uint256) {
+        return nationalIDs.length;
+    }
+
+    function getLogin(uint id) public view returns (string memory) {
+        return signIn[id]; // compare hash with hashed login in the backend
     }
 }
