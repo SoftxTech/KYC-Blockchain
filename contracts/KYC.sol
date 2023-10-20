@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.8;
+pragma solidity >=0.8.12;
 import "hardhat/console.sol";
 // error NOT_Enough_FEE;
 error KYC__NOT_Have_Access();
@@ -76,7 +76,7 @@ contract KYC {
     }
     // storage vs memory
     mapping(uint256 => Person) public people; // link person to his id
-    mapping(uint256 => string) public signIn; // hashed login info
+    mapping(uint256 => bytes32) public signIn; // hashed login info
 
     // State Variables
     address payable public immutable i_owner;
@@ -84,13 +84,20 @@ contract KYC {
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
 
-    constructor() payable {
+    constructor(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id
+    ) payable {
         i_owner = payable(msg.sender);
+        // Init Deployer as Admin / Owner
+        addPerson(_fname, _lname, _name, _id, Roles.Admin, msg.sender);
     }
 
     // functions:
     // 1. Add overloading Person
-    // TODO : if admin , init hash ,normal user later.
+    // TODO : if admin , init hash, normal user later.
     function addPerson(
         string memory _fname,
         string memory _lname,
@@ -110,6 +117,73 @@ contract KYC {
         person.role = Roles.Non; // defualt values for unmentioned
         // other fileds will be default values
         person = grantPermission(person);
+        nationalIDs.push(_id); // prevent dublicate
+        people[_id] = person;
+        emit AddPerson(_id, _name);
+    }
+
+    // Mandatory -> Email?
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender,
+        Roles _role
+    ) public {
+        // mandatory
+        Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name; // get fname , lname
+        person.bod = _bod;
+        person.gender = _gender;
+        person.role = _role;
+        // other fileds will be default values
+        if (_role == Roles.Admin) {
+            string memory user = concatenateStings(_fname, _lname);
+            string memory pass = "password";
+            string memory tohashed = concatenateStings(user, pass);
+            bytes32 _hash = hashDataSHA(tohashed);
+            signIn[_id] = _hash;
+            person.sign.UserName = user;
+            person.sign.Password = pass;
+        }
+        person = grantPermission(person);
+        nationalIDs.push(_id); // prevent dublicate
+        people[_id] = person;
+        emit AddPerson(_id, _name);
+    }
+
+    // admin init
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        Roles _role,
+        address _wallet
+    ) public {
+        Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name; // get fname , lname
+        person.role = _role;
+        // other fileds will be default values
+        person = grantPermission(person);
+        if (_role == Roles.Admin) {
+            string memory user = concatenateStings(_fname, _lname);
+            string memory pass = "password";
+            string memory tohashed = concatenateStings(user, pass);
+            bytes32 _hash = hashDataSHA(tohashed);
+            signIn[_id] = _hash;
+            person.sign.UserName = user;
+            person.sign.Password = pass;
+        }
+        person.person_wallet_address = payable(_wallet);
         nationalIDs.push(_id); // prevent dublicate
         people[_id] = person;
         emit AddPerson(_id, _name);
@@ -136,6 +210,7 @@ contract KYC {
         person = grantPermission(person);
         nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
+        emit AddPerson(_id, _name);
     }
 
     function addPerson(
@@ -160,6 +235,7 @@ contract KYC {
         person.role = Roles.Non; // defualt
         nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
+        emit AddPerson(_id, _name);
     }
 
     function addPerson(
@@ -186,6 +262,7 @@ contract KYC {
         person.role = Roles.Non; // defualt
         nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
+        emit AddPerson(_id, _name);
     }
 
     function addPerson(
@@ -214,6 +291,7 @@ contract KYC {
         person.role = Roles.Non; // defualt
         nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
+        emit AddPerson(_id, _name);
     }
 
     function addPerson(
@@ -246,23 +324,10 @@ contract KYC {
         person.role = Roles.Non; // defualt
         nationalIDs.push(_id); // working with index
         people[_id] = person; // working with id
+        emit AddPerson(_id, _name);
     }
 
     // 2.
-    function grantPermission(
-        Person memory person
-    ) private pure returns (Person memory) {
-        if (person.role == Roles.Non) {
-            person.permission = Permissions.Non;
-        } else if (person.role == Roles.Admin) {
-            person.permission = Permissions.Full;
-        } else if (person.role == Roles.Co_Admin) {
-            person.permission = Permissions.RW;
-        } else if (person.role == Roles.Editor) {
-            person.permission = Permissions.Write;
-        } else person.permission = Permissions.Read;
-        return person;
-    }
 
     // 3. update and add data
     function addEdu(uint id, string memory _education) public {
@@ -291,11 +356,55 @@ contract KYC {
         people[id].intrests.push(_interest);
     }
 
-    function updateLogin(uint id, string memory _hash) public {
+    function updateLogin(uint id, bytes32 _hash) public {
         signIn[id] = _hash;
     }
 
+    function EditLogin(
+        uint id,
+        string memory _user,
+        string memory _password,
+        string memory _email
+    ) public {
+        people[id].sign.UserName = _user;
+        people[id].sign.Password = _password;
+        people[id].sign.Email = _email;
+    }
+
     // middle functions
+    function grantPermission(
+        Person memory person
+    ) private pure returns (Person memory) {
+        if (person.role == Roles.Non) {
+            person.permission = Permissions.Non;
+        } else if (person.role == Roles.Admin) {
+            person.permission = Permissions.Full;
+        } else if (person.role == Roles.Co_Admin) {
+            person.permission = Permissions.RW;
+        } else if (person.role == Roles.Editor) {
+            person.permission = Permissions.Write;
+        } else person.permission = Permissions.Read;
+        return person;
+    }
+
+    function hashData(string memory data) public pure returns (bytes32) {
+        bytes32 hash = keccak256(bytes(data));
+        return hash;
+    }
+
+    function hashDataSHA(string memory data) public pure returns (bytes32) {
+        bytes32 hash = sha256(bytes(data));
+        return hash;
+    }
+
+    // valid from V 0.8.12
+    function concatenateStings(
+        string memory a,
+        string memory b
+    ) public pure returns (string memory) {
+        return string.concat(a, b);
+    }
+
     /*
     function searchField(address fieldValue) external view returns (uint256) {
         for (uint256 i = 0; i < nationalIDs.length; i++) {
@@ -319,7 +428,7 @@ contract KYC {
         return nationalIDs.length;
     }
 
-    function getLogin(uint id) public view returns (string memory) {
+    function getLogin(uint id) public view returns (bytes32) {
         return signIn[id]; // compare hash with hashed login in the backend
     }
 }
