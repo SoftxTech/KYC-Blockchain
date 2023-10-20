@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.12;
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
 // error NOT_Enough_FEE;
 error KYC__NOT_Have_Access();
 
@@ -76,13 +78,17 @@ contract KYC {
     }
     // storage vs memory
     mapping(uint256 => Person) public people; // link person to his id
-    mapping(uint256 => bytes32) public signIn; // hashed login info
+    mapping(uint256 => bytes32) public signIn; // id -> hashed login info
 
     // State Variables
     address payable public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
+    string[] private users; // users/admins list
+
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
+
+    // edit field log
 
     constructor(
         string memory _fname,
@@ -96,32 +102,8 @@ contract KYC {
     }
 
     // functions:
-    // 1. Add overloading Person
+    //**  1. Add overloading Person */
     // TODO : if admin , init hash, normal user later.
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender
-    ) public {
-        // mandatory
-        Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name; // get fname , lname
-        person.bod = _bod;
-        person.gender = _gender;
-        person.role = Roles.Non; // defualt values for unmentioned
-        // other fileds will be default values
-        person = grantPermission(person);
-        nationalIDs.push(_id); // prevent dublicate
-        people[_id] = person;
-        emit AddPerson(_id, _name);
-    }
-
     // Mandatory -> Email?
     function addPerson(
         string memory _fname,
@@ -143,13 +125,8 @@ contract KYC {
         person.role = _role;
         // other fileds will be default values
         if (_role == Roles.Admin) {
-            string memory user = concatenateStings(_fname, _lname);
-            string memory pass = "password";
-            string memory tohashed = concatenateStings(user, pass);
-            bytes32 _hash = hashDataSHA(tohashed);
-            signIn[_id] = _hash;
-            person.sign.UserName = user;
-            person.sign.Password = pass;
+            person = hashLogInInfo(_id, "password", person);
+            users[users.length] = Strings.toString(_id);
         }
         person = grantPermission(person);
         nationalIDs.push(_id); // prevent dublicate
@@ -175,15 +152,35 @@ contract KYC {
         // other fileds will be default values
         person = grantPermission(person);
         if (_role == Roles.Admin) {
-            string memory user = concatenateStings(_fname, _lname);
-            string memory pass = "password";
-            string memory tohashed = concatenateStings(user, pass);
-            bytes32 _hash = hashDataSHA(tohashed);
-            signIn[_id] = _hash;
-            person.sign.UserName = user;
-            person.sign.Password = pass;
+            person = hashLogInInfo(_id, "password", person);
+            users[users.length] = Strings.toString(_id);
         }
         person.person_wallet_address = payable(_wallet);
+        nationalIDs.push(_id); // prevent dublicate
+        people[_id] = person;
+        emit AddPerson(_id, _name);
+    }
+
+    // others
+    function addPerson(
+        string memory _fname,
+        string memory _lname,
+        string memory _name,
+        uint256 _id,
+        uint256 _bod,
+        Gender _gender
+    ) public {
+        // mandatory
+        Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
+        person.NID = _id;
+        person.fName = _fname;
+        person.lName = _lname;
+        person.fullName = _name; // get fname , lname
+        person.bod = _bod;
+        person.gender = _gender;
+        person.role = Roles.Non; // defualt values for unmentioned
+        // other fileds will be default values
+        person = grantPermission(person);
         nationalIDs.push(_id); // prevent dublicate
         people[_id] = person;
         emit AddPerson(_id, _name);
@@ -329,7 +326,7 @@ contract KYC {
 
     // 2.
 
-    // 3. update and add data
+    //**  3. update and add data */
     function addEdu(uint id, string memory _education) public {
         //Person p = people[id];
         // p.education.push(_education);
@@ -361,20 +358,36 @@ contract KYC {
     }
 
     function EditLogin(
-        uint id,
+        uint _id,
         string memory _user,
         string memory _password,
         string memory _email
     ) public {
-        people[id].sign.UserName = _user;
-        people[id].sign.Password = _password;
-        people[id].sign.Email = _email;
+        if (isValidUser(_user) == true) {
+            people[_id].sign.UserName = _user;
+            users[users.length] = _user;
+        }
+        people[_id].sign.Password = _password;
+        people[_id].sign.Email = _email;
+
+        Person memory person = hashLogInInfo(_id, _user, _password);
     }
 
-    // middle functions
+    function EditLogin(
+        uint _id,
+        string memory _password,
+        string memory _email
+    ) public {
+        people[_id].sign.Password = _password;
+        people[_id].sign.Email = _email;
+        string memory _user = people[_id].sign.UserName;
+        Person memory person = hashLogInInfo(_id, _user, _password);
+    }
+
+    //**  middle functions */
     function grantPermission(
         Person memory person
-    ) private pure returns (Person memory) {
+    ) private view returns (Person memory) {
         if (person.role == Roles.Non) {
             person.permission = Permissions.Non;
         } else if (person.role == Roles.Admin) {
@@ -387,45 +400,98 @@ contract KYC {
         return person;
     }
 
-    function hashData(string memory data) public pure returns (bytes32) {
+    // check if user not dublicate
+    function isValidUser(string memory userName) private view returns (bool) {
+        for (uint i = 0; i < users.length; i++) {
+            string memory user = users[i];
+            bool found = compare(userName, user);
+            if (found) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function compare(
+        string memory str1,
+        string memory str2
+    ) public view returns (bool) {
+        if (bytes(str1).length != bytes(str2).length) {
+            return false;
+        }
+        return
+            keccak256(abi.encodePacked(str1)) ==
+            keccak256(abi.encodePacked(str2));
+    }
+
+    // TODO hashing login known user , later Email / user
+    function hashLogInInfo(
+        uint256 _id,
+        string memory user,
+        string memory pass
+    ) private returns (Person memory) {
+        string memory tohashed = concatenateStings(user, pass);
+        bytes32 _hash = hashDataSHA(tohashed);
+        signIn[_id] = _hash;
+    }
+
+    function hashLogInInfo(
+        uint256 _id,
+        string memory user,
+        string memory pass,
+        Person memory person
+    ) private returns (Person memory) {
+        string memory tohashed = concatenateStings(user, pass);
+        bytes32 _hash = hashDataSHA(tohashed);
+        signIn[_id] = _hash;
+        person.sign.UserName = user;
+        person.sign.Password = pass;
+    }
+
+    // init hashing login
+    function hashLogInInfo(
+        uint256 _id,
+        string memory pass,
+        Person memory person
+    ) private returns (Person memory) {
+        string memory user = Strings.toString(_id);
+        string memory tohashed = concatenateStings(user, pass);
+        bytes32 _hash = hashDataSHA(tohashed);
+        signIn[_id] = _hash; // updateLogin hashing
+        person.sign.UserName = user;
+        person.sign.Password = pass;
+    }
+
+    // hashing function
+    function hashData(string memory data) public view returns (bytes32) {
         bytes32 hash = keccak256(bytes(data));
         return hash;
     }
 
-    function hashDataSHA(string memory data) public pure returns (bytes32) {
+    function hashDataSHA(string memory data) public view returns (bytes32) {
         bytes32 hash = sha256(bytes(data));
         return hash;
     }
 
-    // valid from V 0.8.12
+    // valid from V 0.8.12 concat
     function concatenateStings(
         string memory a,
         string memory b
-    ) public pure returns (string memory) {
+    ) public view returns (string memory) {
         return string.concat(a, b);
     }
 
-    /*
-    function searchField(address fieldValue) external view returns (uint256) {
-        for (uint256 i = 0; i < nationalIDs.length; i++) {
-            uint256 key = nationalIDs[i];
-            Person memory person = people[key];
-            if (person.person_wallet_address == fieldValue) {
-                return person.NID;
-            }
-        }
-
-        return 0;
-    }
-    */
-
-    // view / pure functions (getters)
+    //**  view / pure functions (getters) */
     function getPerson(uint id) public view returns (Person memory) {
         return people[id];
     }
 
     function getNumberOfPersons() public view returns (uint256) {
         return nationalIDs.length;
+    }
+
+    function getNumberOfUsers() public view returns (uint256) {
+        return users.length;
     }
 
     function getLogin(uint id) public view returns (bytes32) {

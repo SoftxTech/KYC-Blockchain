@@ -14,9 +14,14 @@
   "license": "MIT",
   "devDependencies": {
     "@chainlink/contracts": "^0.7.1",
+    "@nomicfoundation/hardhat-ethers": "^3.0.4",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.4.1",
+    "@openzeppelin/contracts": "^5.0.0",
+    "@openzeppelin/hardhat-upgrades": "^2.3.3",
     "ethers": "^6.7.1",
-    "hardhat": "^2.17.4"
+    "hardhat": "^2.17.4",
+    "solc": "^0.8.21",
+    "thirdweb": "^0.13.7"
   },
   "dependencies": {
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
