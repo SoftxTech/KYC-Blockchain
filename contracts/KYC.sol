@@ -48,18 +48,22 @@ contract KYC {
         string lName;
         string fullName; // to 4th
         address payable person_wallet_address; // added manually by admins and editors?
-        bytes avatar; // verify idententy
-        bytes image_id;
-        uint license_number;
-        bytes license_image; // check valid with AI
-        bytes[] certificates; // as images
         uint256 bod; // time stamp of birthdate
         Gender gender;
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string[] phone_number;
-        string email; // an array?
+        // string email; // an array?
         Login sign;
+        Additional_Info info;
+    }
+
+    struct Additional_Info {
+        uint256 license_number;
+        //bytes license_image; // check valid with AI
+        // bytes[] certificates; // as images
+        //bytes avatar; // verify idententy
+        //bytes image_id;
         string[] education;
         string[] experiance; // job and other like an CV
         string[] intrests;
@@ -70,7 +74,6 @@ contract KYC {
         string passport;
         Military_status ms;
     }
-
     struct Login {
         string UserName;
         string Password;
@@ -81,7 +84,7 @@ contract KYC {
     mapping(uint256 => bytes32) public signIn; // id -> hashed login info
 
     // State Variables
-    address payable public immutable i_owner;
+    address public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
     string[] private users; // users/admins list
 
@@ -96,7 +99,7 @@ contract KYC {
         string memory _name,
         uint256 _id
     ) payable {
-        i_owner = payable(msg.sender);
+        i_owner = msg.sender;
         // Init Deployer as Admin / Owner
         addPerson(_fname, _lname, _name, _id, Roles.Admin, msg.sender);
     }
@@ -172,6 +175,7 @@ contract KYC {
         // other fileds will be default values
         Permissions _permission = grantPermission(_role);
         person.permission = _permission;
+        //TODO fix issue
         if (_role == Roles.Admin) {
             person = hashLogInInfo(_id, "password", person);
             users[users.length] = Strings.toString(_id);
@@ -183,6 +187,7 @@ contract KYC {
         emit AddPerson(_id, _name);
     }
 
+    /*
     // others
     function addPerson(
         string memory _fname,
@@ -345,40 +350,40 @@ contract KYC {
     }
 
     // 2.
-
+*/
     //**  3. update and add data */
-    function addEdu(uint id, string memory _education) public {
+    /* function addEdu(uint256 id, string memory _education) public {
         //Person p = people[id];
         // p.education.push(_education);
         people[id].education.push(_education);
     }
 
-    function addExp(uint id, string memory _experiance) public {
+    function addExp(uint256 id, string memory _experiance) public {
         people[id].experiance.push(_experiance);
     }
 
-    function addMob(uint id, string memory _mobile) public {
+    function addMob(uint256 id, string memory _mobile) public {
         people[id].phone_number.push(_mobile);
     }
 
-    function addBankAccount(uint id, uint256 _bank_Accounts) public {
+    function addBankAccount(uint256 id, uint256 _bank_Accounts) public {
         people[id].bank_Accounts.push(_bank_Accounts);
     }
 
-    function addCertificate(uint id, bytes memory _certificate) public {
+    function addCertificate(uint256 id, bytes memory _certificate) public {
         people[id].certificates.push(_certificate);
     }
 
-    function addIntrest(uint id, string memory _interest) public {
+    function addIntrest(uint256 id, string memory _interest) public {
         people[id].intrests.push(_interest);
     }
-
-    function updateLogin(uint id, bytes32 _hash) public {
+*/
+    function updateLogin(uint256 id, bytes32 _hash) public {
         signIn[id] = _hash;
     }
 
     function EditLogin(
-        uint _id,
+        uint256 _id,
         string memory _user,
         string memory _password,
         string memory _email
@@ -394,7 +399,7 @@ contract KYC {
     }
 
     function EditLogin(
-        uint _id,
+        uint256 _id,
         string memory _password,
         string memory _email
     ) public {
@@ -421,7 +426,7 @@ contract KYC {
 
     // check if user not dublicate
     function isValidUser(string memory userName) private view returns (bool) {
-        for (uint i = 0; i < users.length; i++) {
+        for (uint256 i = 0; i < users.length; i++) {
             string memory user = users[i];
             bool found = compare(userName, user);
             if (found) {
@@ -434,7 +439,7 @@ contract KYC {
     function compare(
         string memory str1,
         string memory str2
-    ) public view returns (bool) {
+    ) public pure returns (bool) {
         if (bytes(str1).length != bytes(str2).length) {
             return false;
         }
@@ -484,12 +489,12 @@ contract KYC {
     }
 
     // hashing function
-    function hashData(string memory data) public view returns (bytes32) {
+    function hashData(string memory data) public pure returns (bytes32) {
         bytes32 hash = keccak256(bytes(data));
         return hash;
     }
 
-    function hashDataSHA(string memory data) public view returns (bytes32) {
+    function hashDataSHA(string memory data) public pure returns (bytes32) {
         bytes32 hash = sha256(bytes(data));
         return hash;
     }
@@ -498,12 +503,12 @@ contract KYC {
     function concatenateStings(
         string memory a,
         string memory b
-    ) public view returns (string memory) {
+    ) public pure returns (string memory) {
         return string.concat(a, b);
     }
 
     //**  view / pure functions (getters) */
-    function getPerson(uint id) public view returns (Person memory) {
+    function getPerson(uint256 id) public view returns (Person memory) {
         return people[id];
     }
 
@@ -515,7 +520,7 @@ contract KYC {
         return users.length;
     }
 
-    function getLogin(uint id) public view returns (bytes32) {
+    function getLogin(uint256 id) public view returns (bytes32) {
         return signIn[id]; // compare hash with hashed login in the backend
     }
 }
