@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.21;
+pragma solidity >=0.8.20;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -47,7 +47,7 @@ contract KYC {
         string fName;
         string lName;
         string fullName; // to 4th
-        address payable person_wallet_address; // added manually by admins and editors?
+        address person_wallet_address; // added manually by admins and editors?
         uint256 bod; // time stamp of birthdate
         Gender gender;
         Roles role; // in contract
@@ -55,7 +55,6 @@ contract KYC {
         string[] phone_number;
         // string email; // an array?
         Login sign;
-        Additional_Info info;
     }
 
     struct Additional_Info {
@@ -93,15 +92,10 @@ contract KYC {
 
     // edit field log
 
-    constructor(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id
-    ) payable {
+    constructor(uint256 _id) {
         i_owner = msg.sender;
         // Init Deployer as Admin / Owner
-        addPerson(_fname, _lname, _name, _id, Roles.Admin, msg.sender);
+        addPerson(_id, Roles.Admin, msg.sender);
     }
 
     modifier OnlyAdmin(uint256 id) {
@@ -128,7 +122,7 @@ contract KYC {
     ) public OnlyAdmin(cid) {
         require(_id > 0, "ID must be greater than zero");
         // Check if the ID already exists
-        require(people[_id].NID == 0, "ID already exists");
+        // require(people[_id].NID == _id, "ID already exists");
 
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
@@ -142,7 +136,8 @@ contract KYC {
         // other fileds will be default values
         if (_role == Roles.Admin) {
             person = hashLogInInfo(_id, "password", person);
-            users[users.length] = Strings.toString(_id);
+            // users[users.length] = Strings.toString(_id);
+            users.push(Strings.toString(_id));
         }
         Permissions _permission = grantPermission(_role);
         person.permission = _permission;
@@ -153,204 +148,32 @@ contract KYC {
     }
 
     // admin init
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        Roles _role,
-        address _wallet
-    ) public {
+    function addPerson(uint256 _id, Roles _role, address _wallet) public {
         require(_id > 0, "ID must be greater than zero");
         // Check if the ID already exists
-        require(people[_id].NID == 0, "ID already exists");
+        //require(people[_id].NID == _id, "ID already exists");
 
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name; // get fname , lname
         person.role = _role;
         // other fileds will be default values
         Permissions _permission = grantPermission(_role);
         person.permission = _permission;
-        //TODO fix issue
         if (_role == Roles.Admin) {
             person = hashLogInInfo(_id, "password", person);
-            users[users.length] = Strings.toString(_id);
+            //users[users.length] = Strings.toString(_id);
+            users.push(Strings.toString(_id));
         }
-        person.person_wallet_address = payable(_wallet);
+        person.person_wallet_address = _wallet;
         nationalIDs.push(_id); // prevent dublicate
         // Add the new person to the mapping
         people[_id] = person;
-        emit AddPerson(_id, _name);
-    }
-
-    /*
-    // others
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender
-    ) public {
-        // mandatory
-        Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name; // get fname , lname
-        person.bod = _bod;
-        person.gender = _gender;
-        person.role = Roles.Non; // defualt values for unmentioned
-        // other fileds will be default values
-        nationalIDs.push(_id); // prevent dublicate
-        people[_id] = person;
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet);
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile,
-        uint256 licence
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.license_number = licence;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile,
-        uint256 licence,
-        string memory _address
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.license_number = licence;
-        person.home_address = _address;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile,
-        uint256 licence,
-        string memory _address,
-        uint256 fid,
-        uint256 mid
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.license_number = licence;
-        person.home_address = _address;
-        person.father_id = fid;
-        person.mother_id = mid;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
+        // emit AddPerson(_id, _name);
     }
 
     // 2.
-*/
+
     //**  3. update and add data */
     /* function addEdu(uint256 id, string memory _education) public {
         //Person p = people[id];
@@ -390,7 +213,8 @@ contract KYC {
     ) public {
         if (isValidUser(_user) == true) {
             people[_id].sign.UserName = _user;
-            users[users.length] = _user;
+            //users[users.length] = _user;
+            users.push(_user);
         }
         people[_id].sign.Password = _password;
         people[_id].sign.Email = _email;
@@ -439,7 +263,7 @@ contract KYC {
     function compare(
         string memory str1,
         string memory str2
-    ) public pure returns (bool) {
+    ) private pure returns (bool) {
         if (bytes(str1).length != bytes(str2).length) {
             return false;
         }
@@ -454,7 +278,7 @@ contract KYC {
         string memory user,
         string memory pass
     ) private {
-        string memory tohashed = concatenateStings(user, pass);
+        string memory tohashed = string.concat(user, pass);
         bytes32 _hash = hashDataSHA(tohashed);
         signIn[_id] = _hash;
     }
@@ -465,7 +289,7 @@ contract KYC {
         string memory pass,
         Person memory person
     ) private returns (Person memory) {
-        string memory tohashed = concatenateStings(user, pass);
+        string memory tohashed = string.concat(user, pass);
         bytes32 _hash = hashDataSHA(tohashed);
         signIn[_id] = _hash;
         person.sign.UserName = user;
@@ -480,9 +304,14 @@ contract KYC {
         Person memory person
     ) private returns (Person memory) {
         string memory user = Strings.toString(_id);
-        string memory tohashed = concatenateStings(user, pass);
+        string memory tohashed = string.concat(user, pass);
+        // console.log(tohashed);
+        console.log("sha");
         bytes32 _hash = hashDataSHA(tohashed);
+        //console.logBytes32(_hash);
+        // string memory reversedInput = string(abi.encodePacked(_hash));
         signIn[_id] = _hash; // updateLogin hashing
+        //console.logBytes32(signIn[_id]);
         person.sign.UserName = user;
         person.sign.Password = pass;
         return person;
@@ -495,21 +324,29 @@ contract KYC {
     }
 
     function hashDataSHA(string memory data) public pure returns (bytes32) {
+        // bytes memory sad = bytes(data);
+        //console.logBytes(sad);
         bytes32 hash = sha256(bytes(data));
+        //console.logBytes32(hash);
         return hash;
     }
 
     // valid from V 0.8.12 concat
+    /*
     function concatenateStings(
         string memory a,
         string memory b
     ) public pure returns (string memory) {
         return string.concat(a, b);
     }
-
+*/
     //**  view / pure functions (getters) */
     function getPerson(uint256 id) public view returns (Person memory) {
         return people[id];
+    }
+
+    function getUser(uint id) public view returns (string memory) {
+        return users[id];
     }
 
     function getNumberOfPersons() public view returns (uint256) {
