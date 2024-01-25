@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 // error NOT_Enough_FEE;
 error KYC__NOT_Have_Access();
+error Already_Exist();
 
 /**@title KYC Contract
  * @author Abdalrhman Mostafa
@@ -105,11 +106,11 @@ contract KYC {
     // edit field log
 
     constructor(
-        uint256 _id
+        uint256 _id //TODO add other info
     )  {
         i_owner = msg.sender;
         // Init Deployer as Admin / Owner
-       addPerson( _id, Roles.Admin, msg.sender);
+       addPerson( _id, msg.sender);
     }
 
     modifier OnlyAdmin(uint256 id) {
@@ -135,9 +136,12 @@ contract KYC {
         Roles _role
     ) public OnlyAdmin(cid) {
         require(_id > 0, "ID must be greater than zero");
-        // Check if the ID already exists
-        // require(people[_id].NID == _id, "ID already exists");
-
+        //TODO Check if the ID already exists
+       // require(people[_id].NID == _id, "ID already exists");
+        if (people[_id].NID == _id)
+        {
+            revert Already_Exist();
+        }
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
@@ -148,7 +152,7 @@ contract KYC {
         person.gender = _gender;
         person.role = _role;
         // other fileds will be default values
-        if (_role == Roles.Admin) {
+        if (_role == Roles.Admin) { // Admins only could access (for now)
             person = hashLogInInfo(_id, "password", person);
             // users[users.length] = Strings.toString(_id);
             users.push(Strings.toString(_id));
@@ -161,12 +165,11 @@ contract KYC {
         emit AddPerson(_id, _name);
     }
 
-    // admin init
-    function addPerson(
+    // admin init (only owner)
+    function addPerson (
         uint256 _id,
-        Roles _role,
         address _wallet
-    ) public {
+    ) private {
          require(_id > 0, "ID must be greater than zero");
         // Check if the ID already exists
         //require(people[_id].NID == _id, "ID already exists");
@@ -174,213 +177,20 @@ contract KYC {
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
-        person.role = _role;
+        person.role = Roles.Admin;
         // other fileds will be default values
-        Permissions _permission = grantPermission(_role);
+        Permissions _permission = grantPermission(Roles.Admin);
         person.permission = _permission;
-       if (_role == Roles.Admin) {
-            person = hashLogInInfo(_id, "password", person);
-            //users[users.length] = Strings.toString(_id);
-            users.push(Strings.toString(_id));
-        }
+        person = hashLogInInfo(_id, "password", person);
+        users.push(Strings.toString(_id));
         person.person_wallet_address = _wallet;
         nationalIDs.push(_id); // prevent dublicate
         // Add the new person to the mapping
         people[_id] = person;
-        // emit AddPerson(_id, _name);
+        emit AddPerson(_id, "Admin"); // events
     }
 
-    /*
-    // others
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender
-    ) public {
-        // mandatory
-        Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name; // get fname , lname
-        person.bod = _bod;
-        person.gender = _gender;
-        person.role = Roles.Non; // defualt values for unmentioned
-        // other fileds will be default values
-        nationalIDs.push(_id); // prevent dublicate
-        people[_id] = person;
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet);
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile,
-        uint256 licence
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.license_number = licence;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile,
-        uint256 licence,
-        string memory _address
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.license_number = licence;
-        person.home_address = _address;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    function addPerson(
-        string memory _fname,
-        string memory _lname,
-        string memory _name,
-        uint256 _id,
-        uint256 _bod,
-        Gender _gender,
-        address _wallet,
-        string[] memory mobile,
-        uint256 licence,
-        string memory _address,
-        uint256 fid,
-        uint256 mid
-    ) public {
-        Person memory person;
-        person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
-        person.fullName = _name;
-        person.bod = _bod;
-        person.gender = _gender;
-        person.person_wallet_address = payable(_wallet); // not msg.sender
-        person.phone_number = mobile;
-        person.license_number = licence;
-        person.home_address = _address;
-        person.father_id = fid;
-        person.mother_id = mid;
-        person.role = Roles.Non; // defualt
-        nationalIDs.push(_id); // working with index
-        people[_id] = person; // working with id
-        emit AddPerson(_id, _name);
-    }
-
-    // 2.
-*/
-    //**  3. update and add data */
-    /* function addEdu(uint256 id, string memory _education) public {
-        //Person p = people[id];
-        // p.education.push(_education);
-        people[id].education.push(_education);
-    }
-
-    function addExp(uint256 id, string memory _experiance) public {
-        people[id].experiance.push(_experiance);
-    }
-
-    function addMob(uint256 id, string memory _mobile) public {
-        people[id].phone_number.push(_mobile);
-    }
-
-    function addBankAccount(uint256 id, uint256 _bank_Accounts) public {
-        people[id].bank_Accounts.push(_bank_Accounts);
-    }
-
-    function addCertificate(uint256 id, bytes memory _certificate) public {
-        people[id].certificates.push(_certificate);
-    }
-
-    function addIntrest(uint256 id, string memory _interest) public {
-        people[id].intrests.push(_interest);
-    }
-*/
+   
     function updateLogin(uint256 id, bytes32 _hash) public {
         signIn[id] = _hash;
     }
