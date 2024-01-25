@@ -92,13 +92,13 @@ contract KYC {
         string Email;
     }
     // storage vs memory
-    mapping(uint256 => Person) public people; // link person to his id
-    mapping(uint256 => bytes32) public signIn; // id -> hashed login info
+    mapping(uint256 => Person) internal people; // link person to his id
+    mapping(uint256 => bytes32) internal signIn; // id -> hashed login info
 
     // State Variables
     address  public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
-    string[] private users; // users/admins list
+    string[] private users; // users/admins list 
 
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
@@ -136,7 +136,7 @@ contract KYC {
         Roles _role
     ) public OnlyAdmin(cid) {
         require(_id > 0, "ID must be greater than zero");
-        //TODO Check if the ID already exists
+        // Check if the ID already exists
        // require(people[_id].NID == _id, "ID already exists");
         if (people[_id].NID == _id)
         {
@@ -283,7 +283,7 @@ contract KYC {
         bytes32 _hash = hashDataSHA(tohashed);
         signIn[_id] = _hash;
         person.sign.UserName = user;
-        person.sign.Password = pass;
+        //person.sign.Password = pass; // don't need to store the password , hash is only enough.
         return person;
     }
 
@@ -295,15 +295,15 @@ contract KYC {
     ) private returns (Person memory) {
         string memory user = Strings.toString(_id);
         string memory tohashed = string.concat(user, pass);
-        // console.log(tohashed);
-        console.log("sha");
+        //console.log(tohashed);
+        //console.log("sha");
         bytes32 _hash = hashDataSHA(tohashed);
         //console.logBytes32(_hash);
         // string memory reversedInput = string(abi.encodePacked(_hash));
         signIn[_id] = _hash; // updateLogin hashing
         //console.logBytes32(signIn[_id]);
         person.sign.UserName = user;
-        person.sign.Password = pass;
+       // person.sign.Password = pass;
         return person;
     }
 
@@ -334,8 +334,8 @@ contract KYC {
     function getPerson(uint256 id) public view returns (Person memory) {
         return people[id];
     }
-    function getUser(uint id) public view returns (string memory) {
-        return users[id];
+    function getUser(uint index) public view returns (string memory) {
+        return users[index];
     }
 
 
