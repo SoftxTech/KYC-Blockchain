@@ -54,19 +54,15 @@ contract KYC {
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string[] phone_number;
-        // string email; // an array?
+        string email; // an array?
         Login sign;
         Additional_Info info;
     }
 
     struct Additional_Info {
         uint256 license_number;
-        //bytes license_image; // check valid with AI
-        // bytes[] certificates; // as images
-        //bytes avatar; // verify idententy
-        //bytes image_id;
-        Education education;
-        Experiance experiance; // job and other like an CV
+        //string license_image; // check valid with AI
+        //string image; // store hash verify idententy
         string[] intrests;
         uint256[] bank_Accounts;
         uint256 father_id;
@@ -79,12 +75,15 @@ contract KYC {
         uint256 year;
         string specialization;
         string place;
+        string degree;
     }
     struct Experiance{
         uint256 year;
         string specialization;
         string designation;
         string place;
+        //string[] certificates; // as images
+        // add cv attachment (ipfs hash)
     }
     struct Login {
         string UserName;
@@ -94,11 +93,13 @@ contract KYC {
     // storage vs memory
     mapping(uint256 => Person) internal people; // link person to his id
     mapping(uint256 => bytes32) internal signIn; // id -> hashed login info
+    mapping(uint256 => Education[]) internal education; // 
+    mapping(uint256 => Experiance[]) internal experiance; // 
 
     // State Variables
     address  public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
-    string[] private users; // users/admins list 
+    string[] private users; // users/admins list
 
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
@@ -115,6 +116,7 @@ contract KYC {
 
     modifier OnlyAdmin(uint256 id) {
         Roles role = people[id].role;
+        //TODO check login
         if (role != Roles.Admin) {
             revert KYC__NOT_Have_Access();
         }
@@ -189,12 +191,109 @@ contract KYC {
         people[_id] = person;
         emit AddPerson(_id, "Admin"); // events
     }
+    // Edit Data Functions (for each edit there is gas consumption , we need to reduce the gas consumption)
 
-   
+    
+    // Modify info. Functions
+    function editWallet (uint cid, uint _id,address wallet_address) public OnlyAdmin(cid)
+    {
+       // Person memory tmp = people[_id];
+        people[_id].person_wallet_address = wallet_address;
+       // people[_id] = tmp;
+    }
+    function birthOfDate (uint cid, uint _id,uint256 bod) public OnlyAdmin(cid)
+    {
+        people[_id].bod = bod;
+    }
+    function editGender (uint cid, uint _id,uint8 gender) public OnlyAdmin(cid)
+    {
+        people[_id].gender = Gender(gender);
+    }
+    function editRole (uint cid, uint _id,uint8 role) public OnlyAdmin(cid)
+    {
+        people[_id].role = Roles(role);
+        //TODO change Permissions
+    }
+    function editEmail (uint cid, uint _id,string memory email) public OnlyAdmin(cid)
+    {
+        people[_id].email = email;
+    }
+    function EditPhone (uint cid, uint _id,string memory phone) public OnlyAdmin(cid)
+    {
+        // TODO if want to remove phone number
+        people[_id].phone_number.push(phone);
+    }
+    // Additional Info Functions
+
+    //TODO Education (need to check)
+    function addEducation(uint cid, uint id,uint256 year,
+        string memory specialization,
+        string memory place,
+        string memory degree) public OnlyAdmin(cid)
+    {
+        Education[] storage tmp = education[id];
+        Education memory edu;
+        edu.degree = degree;
+        edu.place = place;
+        edu.specialization = specialization;
+        edu.year = year;
+        tmp.push(edu);
+        education[id] = tmp;
+    }
+    // check Exp
+     function addExperiance(uint cid, uint id,uint256 year,
+        string memory specialization,
+        string memory place,
+        string memory designation) public OnlyAdmin(cid)
+    {
+        Experiance[] storage tmp = experiance[id];
+        Experiance memory exp;
+        exp.designation = designation;
+        exp.specialization = specialization;
+        exp.place = place;
+        exp.year = year;
+        tmp.push(exp);
+        experiance[id] = tmp;
+    }
+    function editLicenceNumber(uint cid, uint _id,uint256 license_number) public OnlyAdmin(cid)
+    {
+        people[_id].info.license_number = license_number;
+    }
+    function editBankAccount(uint cid, uint _id,uint256 bank_Accounts) public OnlyAdmin(cid)
+    {
+        // TODO if remove
+        people[_id].info.bank_Accounts.push(bank_Accounts);
+    }
+    function editInterest(uint cid, uint _id,string memory intrest) public OnlyAdmin(cid)
+    {
+        // TODO if remove
+        people[_id].info.intrests.push(intrest);
+    }
+    function editFatherID(uint cid, uint _id,uint256 father_id) public OnlyAdmin(cid)
+    {
+        people[_id].info.father_id = father_id;
+    }
+     function editMotherID(uint cid, uint _id,uint256 mother_id) public OnlyAdmin(cid)
+    {
+        people[_id].info.mother_id = mother_id;
+    }
+    function editAddress(uint cid, uint _id,string memory _address) public OnlyAdmin(cid)
+    {
+        people[_id].info.home_address = _address;
+    }
+     function editPassport(uint cid, uint _id,string memory passport) public OnlyAdmin(cid)
+    {
+        people[_id].info.passport = passport;
+    }
+     function editPassport(uint cid, uint _id,uint ms) public OnlyAdmin(cid)
+    {
+        people[_id].info.ms = Military_status(ms);
+    }
+   /*
     function updateLogin(uint256 id, bytes32 _hash) public {
         signIn[id] = _hash;
     }
-
+*/
     function EditLogin(
         uint256 _id,
         string memory _user,
