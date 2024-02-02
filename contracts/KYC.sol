@@ -97,7 +97,7 @@ contract KYC {
     mapping(uint256 => Experiance[]) internal experiance; // 
 
     // State Variables
-    address  public immutable i_owner;
+    address public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
     string[] private users; // users/admins list
 
@@ -113,7 +113,7 @@ contract KYC {
         // Init Deployer as Admin / Owner
        addPerson( _id, msg.sender);
     }
-
+    //TODO check token boolean if valid | get session of token info
     modifier OnlyAdmin(uint256 id) {
         Roles role = people[id].role;
         //TODO check login
@@ -193,8 +193,7 @@ contract KYC {
     }
     // Edit Data Functions (for each edit there is gas consumption , we need to reduce the gas consumption)
 
-    
-    // Modify info. Functions
+    //** 3. Modify info. Functions */
     function editWallet (uint cid, uint _id,address wallet_address) public OnlyAdmin(cid)
     {
        // Person memory tmp = people[_id];
@@ -319,6 +318,7 @@ contract KYC {
     }
 */
 // TODO check user with login
+/*
     function EditLogin(
         uint256 _id,
         string memory _user,
@@ -330,24 +330,84 @@ contract KYC {
             //users[users.length] = _user;
             users.push(_user);
         }
-        people[_id].sign.Password = _password;
+       // people[_id].sign.Password = _password;
         people[_id].sign.Email = _email;
 
-        hashLogInInfo(_id, _user, _password);
+        hashLogInInfo(_id, _password);
     }
-
+*/
     function EditLogin(
         uint256 _id,
         string memory _password,
         string memory _email
     ) public {
-        people[_id].sign.Password = _password;
+       // people[_id].sign.Password = _password;
         people[_id].sign.Email = _email;
-        string memory _user = people[_id].sign.UserName;
-        hashLogInInfo(_id, _user, _password);
+        //string memory _user = people[_id].sign.UserName;
+        hashLogInInfo(_id, _password);
     }
 
-    //**  middle functions */
+    function logIN(uint256 _id, string memory pass) public view  returns(bool){
+    string memory user = Strings.toString(_id);
+        string memory tohashed = string.concat(user, pass);
+        bytes32 _hash = hashDataSHA(tohashed);
+        bytes32  login = signIn[_id];
+        if (_hash.length != login.length) {
+            return false;
+        }
+        return
+            keccak256(abi.encodePacked(login)) ==
+            keccak256(abi.encodePacked(_hash));
+        //return  true;
+    }
+
+    
+    // TODO hashing login known user , later Email / user
+    function hashLogInInfo(
+        uint256 _id,
+        string memory pass
+    ) private {
+        string memory user = Strings.toString(_id);
+        string memory tohashed = string.concat(user, pass);
+        bytes32 _hash = hashDataSHA(tohashed);
+        signIn[_id] = _hash;
+    }
+/*
+    function hashLogInInfo(
+        uint256 _id,
+        string memory user,
+        string memory pass,
+        Person memory person
+    ) private returns (Person memory) {
+        string memory tohashed = string.concat(user, pass);
+        bytes32 _hash = hashDataSHA(tohashed);
+        signIn[_id] = _hash;
+        person.sign.UserName = user;
+        //person.sign.Password = pass; // don't need to store the password , hash is only enough.
+        return person;
+    }
+*/
+    // init hashing login
+    function hashLogInInfo(
+        uint256 _id,
+        string memory pass,
+        Person memory person
+    ) private returns (Person memory) {
+        string memory user = Strings.toString(_id);
+        string memory tohashed = string.concat(user, pass);
+        //console.log(tohashed);
+        //console.log("sha");
+        bytes32 _hash = hashDataSHA(tohashed);
+        //console.logBytes32(_hash);
+        // string memory reversedInput = string(abi.encodePacked(_hash));
+        signIn[_id] = _hash; // updateLogin hashing
+        //console.logBytes32(signIn[_id]);
+        person.sign.UserName = user;
+       // person.sign.Password = pass;
+        return person;
+    }
+
+//**  middle functions */
     function grantPermission(Roles _role) private pure returns (Permissions) {
         if (_role == Roles.Non) {
             return Permissions.Non;
@@ -384,51 +444,6 @@ contract KYC {
         return
             keccak256(abi.encodePacked(str1)) ==
             keccak256(abi.encodePacked(str2));
-    }
-
-    // TODO hashing login known user , later Email / user
-    function hashLogInInfo(
-        uint256 _id,
-        string memory user,
-        string memory pass
-    ) private {
-        string memory tohashed = string.concat(user, pass);
-        bytes32 _hash = hashDataSHA(tohashed);
-        signIn[_id] = _hash;
-    }
-
-    function hashLogInInfo(
-        uint256 _id,
-        string memory user,
-        string memory pass,
-        Person memory person
-    ) private returns (Person memory) {
-        string memory tohashed = string.concat(user, pass);
-        bytes32 _hash = hashDataSHA(tohashed);
-        signIn[_id] = _hash;
-        person.sign.UserName = user;
-        //person.sign.Password = pass; // don't need to store the password , hash is only enough.
-        return person;
-    }
-
-    // init hashing login
-    function hashLogInInfo(
-        uint256 _id,
-        string memory pass,
-        Person memory person
-    ) private returns (Person memory) {
-        string memory user = Strings.toString(_id);
-        string memory tohashed = string.concat(user, pass);
-        //console.log(tohashed);
-        //console.log("sha");
-        bytes32 _hash = hashDataSHA(tohashed);
-        //console.logBytes32(_hash);
-        // string memory reversedInput = string(abi.encodePacked(_hash));
-        signIn[_id] = _hash; // updateLogin hashing
-        //console.logBytes32(signIn[_id]);
-        person.sign.UserName = user;
-       // person.sign.Password = pass;
-        return person;
     }
 
     // hashing function
