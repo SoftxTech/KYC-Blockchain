@@ -67,7 +67,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
         uint256 license_number;
         //string license_image; // check valid with AI
         //string image; // store hash verify idententy
-        string[] intrests;
         uint256[] bank_Accounts;
         uint256 father_id;
         uint256 mother_id;
@@ -114,7 +113,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
     __Ownable_init(msg.sender);
     __UUPSUpgradeable_init();
      addPerson( _id, msg.sender);
-    _disableInitializers();
+    //_disableInitializers();
 }
 
 function _authorizeUpgrade(address newImplementation) internal override
@@ -263,16 +262,17 @@ function _authorizeUpgrade(address newImplementation) internal override
         string memory degree) public {
             
         OnlyAdmin(cid);
-        Education memory edu;
-        edu.degree = degree;
-        edu.place = place;
-        edu.specialization = specialization;
-        edu.year = year;
-        education[id][i] = edu;
+        education[id][i] = Education(year,specialization,place,degree);
     }
     function deleteEducation(uint cid,uint256 id,uint i) public {
         OnlyAdmin(cid);
-        delete education[id][i];
+        for (uint index = i; index < education[id].length; index++) 
+        {
+            if(index != education[id].length-1){
+            education[id][index] = education[id][index+1];
+            }
+        }
+        delete education[id][education[id].length-1];
     }
     // Experiance
     function addExperiance(uint cid, uint id,uint256 year,
@@ -296,16 +296,16 @@ function _authorizeUpgrade(address newImplementation) internal override
         string memory place,
         string memory designation) public  {
             OnlyAdmin(cid);
-        Experiance memory exp;
-        exp.designation = designation;
-        exp.specialization = specialization;
-        exp.place = place;
-        exp.year = year;
-        experiance[id][i] = exp;
+        experiance[id][i] = Experiance(year,specialization,designation,place);
     }
     function deleteExperiance(uint cid,uint256 id,uint i) public {
         OnlyAdmin(cid);
-        delete experiance[id][i];
+          for (uint index = i; index < experiance[id].length; index++) 
+        {
+            if(index != experiance[id].length-1)
+            experiance[id][index] = experiance[id][index+1];
+        }
+        delete experiance[id][experiance[id].length-1];
     }
     function editLicenceNumber(uint cid, uint _id,uint256 license_number) public 
     {
@@ -318,12 +318,6 @@ function _authorizeUpgrade(address newImplementation) internal override
         // TODO if remove
         OnlyAdmin(cid);
         people[_id].info.bank_Accounts.push(bank_Accounts);
-    }
-    function editInterest(uint cid, uint _id,string memory intrest) public
-    {
-        // TODO if remove
-        OnlyAdmin(cid);
-        people[_id].info.intrests.push(intrest);
     }
     function editFatherID(uint cid, uint _id,uint256 father_id) public
     {
