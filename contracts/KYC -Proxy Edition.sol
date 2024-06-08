@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// error NOT_Enough_FEE;
+// errors
 error KYC__NOT_Have_Access();
 error Already_Exist();
 error ID_must_be_greater_than_zero();
@@ -32,7 +32,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
         Admin // owner could add admins and other roles , full control
     }
     // when do operations check and if not revert
-    // require(person.name.length > 0, "Person must have a name");
     enum Permissions {
         // could ignore and rely on roles only
         Non,
@@ -118,7 +117,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
     _disableInitializers();
 }
 
-function _authorizeUpgrade(address newImplementation) internal onlyOwner override
+function _authorizeUpgrade(address newImplementation) internal override
 {
     
 }
@@ -129,7 +128,6 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         if (role != Roles.Admin) {
             revert KYC__NOT_Have_Access();
         }
-        //_;
     }
 
     // functions:
@@ -147,7 +145,6 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         Roles _role
     ) public  {
         OnlyAdmin(cid);
-        //require(_id > 0, "ID must be greater than zero");
         if (_id<0)
         {
             revert ID_must_be_greater_than_zero();
@@ -186,13 +183,10 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         uint256 _id,
         address _wallet
     ) private {
-        //  require(_id > 0, "ID must be greater than zero");
         if (_id<0)
         {
             revert ID_must_be_greater_than_zero();
         }
-        // Check if the ID already exists
-        //require(people[_id].NID == _id, "ID already exists");
 
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
@@ -215,9 +209,7 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
     function editWallet (uint cid, uint _id,address wallet_address) public 
     {
         OnlyAdmin(cid);
-       // Person memory tmp = people[_id];
         people[_id].person_wallet_address = wallet_address;
-       // people[_id] = tmp;
     }
     function birthOfDate (uint cid, uint _id,uint256 bod) public 
     {
@@ -278,6 +270,10 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         edu.year = year;
         education[id][i] = edu;
     }
+    function deleteEducation(uint cid,uint256 id,uint i) public {
+        OnlyAdmin(cid);
+        delete education[id][i];
+    }
     // Experiance
     function addExperiance(uint cid, uint id,uint256 year,
         string memory specialization,
@@ -306,6 +302,10 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         exp.place = place;
         exp.year = year;
         experiance[id][i] = exp;
+    }
+    function deleteExperiance(uint cid,uint256 id,uint i) public {
+        OnlyAdmin(cid);
+        delete experiance[id][i];
     }
     function editLicenceNumber(uint cid, uint _id,uint256 license_number) public 
     {
@@ -350,6 +350,11 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         OnlyAdmin(cid);
         people[_id].info.ms = Military_status(ms);
     }
+    function deletePerson(uint cid, uint _id) public
+    {
+        OnlyAdmin(cid);
+        delete people[_id];
+    }
  
     // function EditLogin(
     //     uint256 _id,
@@ -381,8 +386,6 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         uint256 _id,
         string memory pass
     ) private {
-        // string memory user = Strings.toString(_id);
-        // string memory tohashed = string.concat(user, pass);
         bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
         signIn[_id] = _hash;
     }
@@ -393,17 +396,10 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
         string memory pass,
         Person memory person
     ) private returns (Person memory) {
-        //string memory user = Strings.toString(_id);
-        //string memory tohashed = string.concat(user, pass);
-        //console.log(tohashed);
-        //console.log("sha");
+      
         bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
-        //console.logBytes32(_hash);
-        // string memory reversedInput = string(abi.encodePacked(_hash));
         signIn[_id] = _hash; // updateLogin hashing
-        //console.logBytes32(signIn[_id]);
         person.sign.UserName = Strings.toString(_id);
-       // person.sign.Password = pass;
         return person;
     }
 
@@ -434,23 +430,9 @@ function _authorizeUpgrade(address newImplementation) internal onlyOwner overrid
     //     return true;
     // }
 
-    // function compare(
-    //     string memory str1,
-    //     string memory str2
-    // ) private pure returns (bool) {
-    //     if (bytes(str1).length != bytes(str2).length) {
-    //         return false;
-    //     }
-    //     return
-    //         keccak256(abi.encodePacked(str1)) ==
-    //         keccak256(abi.encodePacked(str2));
-    // }
 
     function hashDataSHA(string memory data) public pure returns (bytes32) {
-       // bytes memory sad = bytes(data);
-        //console.logBytes(sad);
         bytes32 hash = sha256(bytes(data));
-        //console.logBytes32(hash);
         return hash;
     }
 
