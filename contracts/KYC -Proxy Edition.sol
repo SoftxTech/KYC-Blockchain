@@ -25,11 +25,8 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
         Female // 1
     }
     enum Roles {
-        Non, // uint256 0 -> Non , default
-        Viewer, // reads only
-        Editor, // like a data enter
-        Co_Admin, // rw
-        Admin // owner could add admins and other roles , full control
+        Admin, // owner could add admins and other roles , full control
+        User
     }
     // when do operations check and if not revert
     enum Permissions {
@@ -58,7 +55,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string[] phone_number;
-        string email; // an array?
+       // string email; // an array?
         Login sign;
         Additional_Info info;
     }
@@ -100,9 +97,8 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
     mapping(uint256 => Experiance[]) internal experiance; // 
 
     // State Variables
-    address public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
-    string[] private users; // users/admins list
+    uint256[] private users; // users/admins list
 
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
@@ -121,7 +117,7 @@ function _authorizeUpgrade(address newImplementation) internal override
     
 }
     //TODO check token boolean if valid | get session of token info
-    function  OnlyAdmin(uint256 id) private view {
+    function  OnlyAdmin(uint256 id)  internal view {
         Roles role = people[id].role;
         //TODO check login
         if (role != Roles.Admin) {
@@ -165,10 +161,11 @@ function _authorizeUpgrade(address newImplementation) internal override
         person.role = _role;
         // other fileds will be default values
         if (_role == Roles.Admin) { // Admins only could access (for now)
-            person = hashLogInInfo(_id, "password", person);
+            person = hashLogInInfo(_id, Strings.toString(_id), person);
             // users[users.length] = Strings.toString(_id);
-            users.push(Strings.toString(_id));
+            users.push(_id);
         }
+        
         Permissions _permission = grantPermission(_role);
         person.permission = _permission;
         nationalIDs.push(_id); // prevent dublicate
@@ -181,7 +178,7 @@ function _authorizeUpgrade(address newImplementation) internal override
     function addPerson (
         uint256 _id,
         address _wallet
-    ) private {
+    ) internal  {
         if (_id<0)
         {
             revert ID_must_be_greater_than_zero();
@@ -195,7 +192,7 @@ function _authorizeUpgrade(address newImplementation) internal override
         Permissions _permission = grantPermission(Roles.Admin);
         person.permission = _permission;
         person = hashLogInInfo(_id, "password", person);
-        users.push(Strings.toString(_id));
+        users.push(_id);
         person.person_wallet_address = _wallet;
         nationalIDs.push(_id); // prevent dublicate
         // Add the new person to the mapping
@@ -226,11 +223,11 @@ function _authorizeUpgrade(address newImplementation) internal override
         people[_id].role = Roles(role);
         //TODO change Permissions
     }
-    function editEmail (uint cid, uint _id,string memory email) public 
-    {
-        OnlyAdmin(cid);
-        people[_id].email = email;
-    }
+    // function editEmail (uint cid, uint _id,string memory email) public 
+    // {
+    //     OnlyAdmin(cid);
+    //     people[_id].email = email;
+    // }
     function EditPhone (uint cid, uint _id,string memory phone) public 
     {
         OnlyAdmin(cid);
@@ -339,7 +336,7 @@ function _authorizeUpgrade(address newImplementation) internal override
         OnlyAdmin(cid);
         people[_id].info.passport = passport;
     }
-     function editPassport(uint cid, uint _id,uint ms) public
+     function editMilitaryStatus(uint cid, uint _id,uint ms) public
     {
         OnlyAdmin(cid);
         people[_id].info.ms = Military_status(ms);
@@ -347,41 +344,59 @@ function _authorizeUpgrade(address newImplementation) internal override
     function deletePerson(uint cid, uint _id) public
     {
         OnlyAdmin(cid);
+        uint iid = 0;
+        uint uid = 0;
+        for(iid ; iid <nationalIDs.length;iid++){
+            if (nationalIDs[iid]==_id)
+                break;
+        }  
+
+        for(uint index = iid ; index <nationalIDs.length-1;index++){
+            if(index != nationalIDs.length-1)
+                nationalIDs[index]=nationalIDs[index+1];
+        }
+
+        if(people[_id].role==Roles.Admin)
+        {
+            for(uid ; uid < users.length;uid++)
+            {
+                if (users[uid]==_id)
+                    break;
+            }   
+            for(uint index = uid ; index <users.length-1;index++)
+            {
+                if(index != users.length-1)
+                    users[index]=users[index+1];
+            }
+        }
+        
         delete people[_id];
     }
  
-    // function EditLogin(
-    //     uint256 _id,
-    //     string memory _password,
-    //     string memory _email
-    // ) public {
-    //    // people[_id].sign.Password = _password;
-    //     people[_id].sign.Email = _email;
-    //     //string memory _user = people[_id].sign.UserName;
-    //     hashLogInInfo(_id, _password);
-    // }
+    function EditLogin(
+        uint256 _id,
+        string memory _password
+    ) public {
+       people[_id].sign.Password = _password;
+        //string memory _user = people[_id].sign.UserName;
+        hashLogInInfo(_id, _password);
+    }
 
-    // function logIN(uint256 _id, string memory pass) public view  returns(bool){
-    // string memory user = Strings.toString(_id);
-    //     string memory tohashed = string.concat(user, pass);
-    //     bytes32 _hash = hashDataSHA(tohashed);
-    //     bytes32  login = signIn[_id];
-    //     if (_hash.length != login.length) {
-    //         return false;
-    //     }
-    //     return
-    //         keccak256(abi.encodePacked(login)) ==
-    //         keccak256(abi.encodePacked(_hash));
-    //     //return  true;
-    //}
+    function logIN(uint256 _id, string memory pass) public view  returns(bool){
+        if (hashDataSHA(string.concat(Strings.toString(_id), pass)).length != signIn[_id].length) {
+            return false;
+        }
+        return
+            keccak256(abi.encodePacked(signIn[_id])) ==
+            keccak256(abi.encodePacked(hashDataSHA(string.concat(Strings.toString(_id), pass))));
+    }
 
     // TODO hashing login known user , later Email / user
     function hashLogInInfo(
         uint256 _id,
         string memory pass
-    ) private {
-        bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
-        signIn[_id] = _hash;
+    ) internal {
+        signIn[_id] = hashDataSHA(string.concat(Strings.toString(_id), pass));
     }
 
     // init hashing login
@@ -389,7 +404,7 @@ function _authorizeUpgrade(address newImplementation) internal override
         uint256 _id,
         string memory pass,
         Person memory person
-    ) private returns (Person memory) {
+    ) internal returns (Person memory) {
       
         bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
         signIn[_id] = _hash; // updateLogin hashing
@@ -398,20 +413,14 @@ function _authorizeUpgrade(address newImplementation) internal override
     }
 
 //**  middle functions */
-    function grantPermission(Roles _role) private pure returns (Permissions) {
-        if (_role == Roles.Non) {
-            return Permissions.Non;
-        } else if (_role == Roles.Admin) {
+    function grantPermission(Roles _role) internal pure returns (Permissions) {
+         if (_role == Roles.Admin) {
             return Permissions.Full;
-        } else if (_role == Roles.Co_Admin) {
-            return Permissions.RW;
-        } else if (_role == Roles.Editor) {
-            return Permissions.Write;
-        } else {
-            return Permissions.Read;
+        } else  {
+            return Permissions.Non;
         }
+    
     }
-
     // check if user not dublicate
     // function isValidUser(string memory userName) private view returns (bool) {
     //     for (uint256 i = 0; i < users.length; i++) {
@@ -434,7 +443,7 @@ function _authorizeUpgrade(address newImplementation) internal override
     function getPerson(uint256 id) public view returns (Person memory) {
         return people[id];
     }
-    function getUser(uint index) public view returns (string memory) {
+    function getUser(uint index) public view returns (uint256) {
         return users[index];
     }
 
@@ -442,7 +451,7 @@ function _authorizeUpgrade(address newImplementation) internal override
         return nationalIDs.length;
     }
 
-    function getNumberOfUsers() public view returns (uint256) {
+    function getNumberOfAdmins() public view returns (uint256) {
         return users.length;
     }
 
