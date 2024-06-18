@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-// error NOT_Enough_FEE;
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+// errors
 error KYC__NOT_Have_Access();
 error Already_Exist();
+error ID_must_be_greater_than_zero();
 
 /**@title KYC Contract
  * @author Abdalrhman Mostafa
  * @notice This contract is for adding and retriving customers data
  */
 //TODO use Proxy pattern Contract to save DB isolated
-contract KYC {
+contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable{
     // Types declartion
     // when add role, call function that add sutable permisson assigned to the rule
     enum Gender {
@@ -20,14 +25,10 @@ contract KYC {
         Female // 1
     }
     enum Roles {
-        Non, // uint256 0 -> Non , default
-        Viewer, // reads only
-        Editor, // like a data enter
-        Co_Admin, // rw
-        Admin // owner could add admins and other roles , full control
+        Admin, // owner could add admins and other roles , full control
+        User
     }
     // when do operations check and if not revert
-    // require(person.name.length > 0, "Person must have a name");
     enum Permissions {
         // could ignore and rely on roles only
         Non,
@@ -45,16 +46,14 @@ contract KYC {
 
     struct Person {
         uint256  NID; // check if could remove
-        string fName;
-        string lName;
         string fullName; // to 4th
         address  person_wallet_address; // added manually by admins and editors?
         uint256 bod; // time stamp of birthdate
         Gender gender;
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
-        string[] phone_number;
-        string email; // an array?
+        string phone_number;
+       // string email; // an array?
         Login sign;
         Additional_Info info;
     }
@@ -62,11 +61,10 @@ contract KYC {
     struct Additional_Info {
         uint256 license_number;
         //string license_image; // check valid with AI
-        //string image; // store hash verify idententy
-        string[] intrests;
+        string image; // store hash verify idententy
         uint256[] bank_Accounts;
-        uint256 father_id;
-        uint256 mother_id;
+        //uint256 father_id;
+        //uint256 mother_id;
         string home_address;
         string passport;
         Military_status ms;
@@ -88,7 +86,7 @@ contract KYC {
     struct Login {
         string UserName;
         string Password;
-        string Email;
+        //string Email;
     }
     // storage vs memory
     mapping(uint256 => Person) internal people; // link person to his id
@@ -97,30 +95,32 @@ contract KYC {
     mapping(uint256 => Experiance[]) internal experiance; // 
 
     // State Variables
-    address public immutable i_owner;
     uint256[] private nationalIDs; // keys - prevent dublicate
-    string[] private users; // users/admins list
+    uint256[] private users; // users/admins list
 
     // Events
     event AddPerson(uint256 indexed Nid, string indexed fullName);
 
     // edit field log
 
-    constructor(
-        uint256 _id //TODO add other info
-    )  {
-        i_owner = msg.sender;
-        // Init Deployer as Admin / Owner
-       addPerson( _id, msg.sender);
-    }
+    function initialize(uint256 _id) initializer public {
+    __Ownable_init(msg.sender);
+    __UUPSUpgradeable_init();
+     addPerson( _id, msg.sender,"");
+    //_disableInitializers();
+}
+
+function _authorizeUpgrade(address newImplementation) internal override
+{
+    
+}
     //TODO check token boolean if valid | get session of token info
-    modifier OnlyAdmin(uint256 id) {
+    function  OnlyAdmin(uint256 id)  internal view {
         Roles role = people[id].role;
         //TODO check login
         if (role != Roles.Admin) {
             revert KYC__NOT_Have_Access();
         }
-        _;
     }
 
     // functions:
@@ -129,15 +129,17 @@ contract KYC {
     // Mandatory -> Email?
     function addPerson(
         uint256 cid,
-        string memory _fname,
-        string memory _lname,
         string memory _name,
         uint256 _id,
         uint256 _bod,
         Gender _gender,
         Roles _role
-    ) public OnlyAdmin(cid) {
-        require(_id > 0, "ID must be greater than zero");
+    ) public  {
+        OnlyAdmin(cid);
+        if (_id<0)
+        {
+            revert ID_must_be_greater_than_zero();
+        }
         // Check if the ID already exists
        // require(people[_id].NID == _id, "ID already exists");
         if (people[_id].NID == _id)
@@ -147,18 +149,17 @@ contract KYC {
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
-        person.fName = _fname;
-        person.lName = _lname;
         person.fullName = _name; // get fname , lname
         person.bod = _bod;
         person.gender = _gender;
         person.role = _role;
         // other fileds will be default values
         if (_role == Roles.Admin) { // Admins only could access (for now)
-            person = hashLogInInfo(_id, "password", person);
+            person = hashLogInInfo(_id, Strings.toString(_id), person);
             // users[users.length] = Strings.toString(_id);
-            users.push(Strings.toString(_id));
+            users.push(_id);
         }
+        
         Permissions _permission = grantPermission(_role);
         person.permission = _permission;
         nationalIDs.push(_id); // prevent dublicate
@@ -170,11 +171,13 @@ contract KYC {
     // admin init (only owner)
     function addPerson (
         uint256 _id,
-        address _wallet
-    ) private {
-         require(_id > 0, "ID must be greater than zero");
-        // Check if the ID already exists
-        //require(people[_id].NID == _id, "ID already exists");
+        address _wallet,
+        string memory img
+    ) internal  {
+        if (_id<0)
+        {
+            revert ID_must_be_greater_than_zero();
+        }
 
         // Create a new Person instance
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
@@ -184,7 +187,8 @@ contract KYC {
         Permissions _permission = grantPermission(Roles.Admin);
         person.permission = _permission;
         person = hashLogInInfo(_id, "password", person);
-        users.push(Strings.toString(_id));
+        users.push(_id);
+        person.info.image = img;
         person.person_wallet_address = _wallet;
         nationalIDs.push(_id); // prevent dublicate
         // Add the new person to the mapping
@@ -194,42 +198,55 @@ contract KYC {
     // Edit Data Functions (for each edit there is gas consumption , we need to reduce the gas consumption)
 
     //** 3. Modify info. Functions */
-    function editWallet (uint cid, uint _id,address wallet_address) public OnlyAdmin(cid)
+    function editName (uint cid, uint _id,string memory name) public 
     {
-       // Person memory tmp = people[_id];
-        people[_id].person_wallet_address = wallet_address;
-       // people[_id] = tmp;
+        OnlyAdmin(cid);
+        people[_id].fullName = name;
     }
-    function birthOfDate (uint cid, uint _id,uint256 bod) public OnlyAdmin(cid)
+    function editWallet (uint cid, uint _id,address wallet_address) public 
     {
+        OnlyAdmin(cid);
+        people[_id].person_wallet_address = wallet_address;
+    }
+    function birthOfDate (uint cid, uint _id,uint256 bod) public 
+    {
+        OnlyAdmin(cid);
         people[_id].bod = bod;
     }
-    function editGender (uint cid, uint _id,uint8 gender) public OnlyAdmin(cid)
+    function editGender (uint cid, uint _id,uint8 gender) public
     {
+        OnlyAdmin(cid);
         people[_id].gender = Gender(gender);
     }
-    function editRole (uint cid, uint _id,uint8 role) public OnlyAdmin(cid)
+    function editRole (uint cid, uint _id,uint8 role) public
     {
+        OnlyAdmin(cid);
         people[_id].role = Roles(role);
         //TODO change Permissions
     }
-    function editEmail (uint cid, uint _id,string memory email) public OnlyAdmin(cid)
+    // function editEmail (uint cid, uint _id,string memory email) public 
+    // {
+    //     OnlyAdmin(cid);
+    //     people[_id].email = email;
+    // }
+    function EditPhone (uint cid, uint _id,string memory phone) public 
     {
-        people[_id].email = email;
-    }
-    function EditPhone (uint cid, uint _id,string memory phone) public OnlyAdmin(cid)
-    {
+        OnlyAdmin(cid);
         // TODO if want to remove phone number
-        people[_id].phone_number.push(phone);
+        //people[_id].phone_number.push(phone);
+        people[_id].phone_number=phone;
     }
     // Additional Info Functions
-
+    function setImage(uint256 id,string memory img) public   {
+            people[id].info.image = img; 
+        }
     // Education 
     function addEducation(uint cid, uint id,uint256 year,
         string memory specialization,
         string memory place,
-        string memory degree) public OnlyAdmin(cid)
+        string memory degree) public 
     {
+        OnlyAdmin(cid);
         Education[] storage tmp = education[id];
         Education memory edu;
         edu.degree = degree;
@@ -243,20 +260,28 @@ contract KYC {
     function editEducation(uint cid,uint256 id,uint i,uint256 year,
         string memory specialization,
         string memory place,
-        string memory degree) public OnlyAdmin(cid){
-        Education memory edu;
-        edu.degree = degree;
-        edu.place = place;
-        edu.specialization = specialization;
-        edu.year = year;
-        education[id][i] = edu;
+        string memory degree) public {
+            
+        OnlyAdmin(cid);
+        education[id][i] = Education(year,specialization,place,degree);
+    }
+    function deleteEducation(uint cid,uint256 id,uint i) public {
+        OnlyAdmin(cid);
+        for (uint index = i; index < education[id].length; index++) 
+        {
+            if(index != education[id].length-1){
+            education[id][index] = education[id][index+1];
+            }
+        }
+        delete education[id][education[id].length-1];
     }
     // Experiance
-     function addExperiance(uint cid, uint id,uint256 year,
+    function addExperiance(uint cid, uint id,uint256 year,
         string memory specialization,
         string memory place,
-        string memory designation) public OnlyAdmin(cid)
+        string memory designation) public 
     {
+        OnlyAdmin(cid);
         Experiance[] storage tmp = experiance[id];
         Experiance memory exp;
         exp.designation = designation;
@@ -270,210 +295,139 @@ contract KYC {
      function editExperiance(uint cid,uint256 id,uint i,uint256 year,
         string memory specialization,
         string memory place,
-        string memory designation) public  OnlyAdmin(cid){
-        Experiance memory exp;
-        exp.designation = designation;
-        exp.specialization = specialization;
-        exp.place = place;
-        exp.year = year;
-        experiance[id][i] = exp;
+        string memory designation) public  {
+            OnlyAdmin(cid);
+        experiance[id][i] = Experiance(year,specialization,designation,place);
     }
-    function editLicenceNumber(uint cid, uint _id,uint256 license_number) public OnlyAdmin(cid)
+    function deleteExperiance(uint cid,uint256 id,uint i) public {
+        OnlyAdmin(cid);
+          for (uint index = i; index < experiance[id].length; index++) 
+        {
+            if(index != experiance[id].length-1)
+            experiance[id][index] = experiance[id][index+1];
+        }
+        delete experiance[id][experiance[id].length-1];
+    }
+    function editLicenceNumber(uint cid, uint _id,uint256 license_number) public 
     {
+        OnlyAdmin(cid);
         people[_id].info.license_number = license_number;
     }
-    function editBankAccount(uint cid, uint _id,uint256 bank_Accounts) public OnlyAdmin(cid)
+
+    function editBankAccount(uint cid, uint _id,uint256 bank_Accounts) public
     {
         // TODO if remove
+        OnlyAdmin(cid);
         people[_id].info.bank_Accounts.push(bank_Accounts);
     }
-    function editInterest(uint cid, uint _id,string memory intrest) public OnlyAdmin(cid)
+    
+    function editAddress(uint cid, uint _id,string memory _address) public 
     {
-        // TODO if remove
-        people[_id].info.intrests.push(intrest);
-    }
-    function editFatherID(uint cid, uint _id,uint256 father_id) public OnlyAdmin(cid)
-    {
-        people[_id].info.father_id = father_id;
-    }
-     function editMotherID(uint cid, uint _id,uint256 mother_id) public OnlyAdmin(cid)
-    {
-        people[_id].info.mother_id = mother_id;
-    }
-    function editAddress(uint cid, uint _id,string memory _address) public OnlyAdmin(cid)
-    {
+        OnlyAdmin(cid);
         people[_id].info.home_address = _address;
     }
-     function editPassport(uint cid, uint _id,string memory passport) public OnlyAdmin(cid)
+     function editPassport(uint cid, uint _id,string memory passport) public 
     {
+        OnlyAdmin(cid);
         people[_id].info.passport = passport;
     }
-     function editPassport(uint cid, uint _id,uint ms) public OnlyAdmin(cid)
+     function editMilitaryStatus(uint cid, uint _id,uint ms) public
     {
+        OnlyAdmin(cid);
         people[_id].info.ms = Military_status(ms);
     }
-   /*
-    function updateLogin(uint256 id, bytes32 _hash) public {
-        signIn[id] = _hash;
-    }
-*/
-// TODO check user with login
-/*
-    function EditLogin(
-        uint256 _id,
-        string memory _user,
-        string memory _password,
-        string memory _email
-    ) public {
-        if (isValidUser(_user) == true) {
-            people[_id].sign.UserName = _user;
-            //users[users.length] = _user;
-            users.push(_user);
-        }
-       // people[_id].sign.Password = _password;
-        people[_id].sign.Email = _email;
+    function deletePerson(uint cid, uint _id) public
+    {
+        OnlyAdmin(cid);
+        uint iid = 0;
+        uint uid = 0;
+        for(iid ; iid <nationalIDs.length;iid++){
+            if (nationalIDs[iid]==_id)
+                break;
+        }  
 
-        hashLogInInfo(_id, _password);
+        for(uint index = iid ; index <nationalIDs.length-1;index++){
+            if(index != nationalIDs.length-1)
+                nationalIDs[index]=nationalIDs[index+1];
+        }
+
+        if(people[_id].role==Roles.Admin)
+        {
+            for(uid ; uid < users.length;uid++)
+            {
+                if (users[uid]==_id)
+                    break;
+            }   
+            for(uint index = uid ; index <users.length-1;index++)
+            {
+                if(index != users.length-1)
+                    users[index]=users[index+1];
+            }
+        }
+        
+        delete people[_id];
     }
-*/
+ 
     function EditLogin(
         uint256 _id,
-        string memory _password,
-        string memory _email
+        string memory _password
     ) public {
-       // people[_id].sign.Password = _password;
-        people[_id].sign.Email = _email;
+       people[_id].sign.Password = _password;
         //string memory _user = people[_id].sign.UserName;
         hashLogInInfo(_id, _password);
     }
 
-    function logIN(uint256 _id, string memory pass) public view  returns(bool){
-    string memory user = Strings.toString(_id);
-        string memory tohashed = string.concat(user, pass);
-        bytes32 _hash = hashDataSHA(tohashed);
-        bytes32  login = signIn[_id];
-        if (_hash.length != login.length) {
-            return false;
+    function logIN(uint256 _id, string memory pass) public view  returns(bool , string memory,uint256){
+        if (hashDataSHA(string.concat(Strings.toString(_id), pass)).length != signIn[_id].length) {
+            return (false,people[_id].info.image,_id);
         }
+        //getPerson(_id);
         return
-            keccak256(abi.encodePacked(login)) ==
-            keccak256(abi.encodePacked(_hash));
-        //return  true;
+            (keccak256(abi.encodePacked(signIn[_id])) ==
+            keccak256(abi.encodePacked(hashDataSHA(string.concat(Strings.toString(_id), pass)))),people[_id].info.image,_id);
     }
 
-    
     // TODO hashing login known user , later Email / user
     function hashLogInInfo(
         uint256 _id,
         string memory pass
-    ) private {
-        string memory user = Strings.toString(_id);
-        string memory tohashed = string.concat(user, pass);
-        bytes32 _hash = hashDataSHA(tohashed);
-        signIn[_id] = _hash;
+    ) internal {
+        signIn[_id] = hashDataSHA(string.concat(Strings.toString(_id), pass));
     }
-/*
-    function hashLogInInfo(
-        uint256 _id,
-        string memory user,
-        string memory pass,
-        Person memory person
-    ) private returns (Person memory) {
-        string memory tohashed = string.concat(user, pass);
-        bytes32 _hash = hashDataSHA(tohashed);
-        signIn[_id] = _hash;
-        person.sign.UserName = user;
-        //person.sign.Password = pass; // don't need to store the password , hash is only enough.
-        return person;
-    }
-*/
+
     // init hashing login
     function hashLogInInfo(
         uint256 _id,
         string memory pass,
         Person memory person
-    ) private returns (Person memory) {
-        string memory user = Strings.toString(_id);
-        string memory tohashed = string.concat(user, pass);
-        //console.log(tohashed);
-        //console.log("sha");
-        bytes32 _hash = hashDataSHA(tohashed);
-        //console.logBytes32(_hash);
-        // string memory reversedInput = string(abi.encodePacked(_hash));
+    ) internal returns (Person memory) {
+      
+        bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
         signIn[_id] = _hash; // updateLogin hashing
-        //console.logBytes32(signIn[_id]);
-        person.sign.UserName = user;
-       // person.sign.Password = pass;
+        person.sign.UserName = Strings.toString(_id);
         return person;
     }
 
 //**  middle functions */
-    function grantPermission(Roles _role) private pure returns (Permissions) {
-        if (_role == Roles.Non) {
-            return Permissions.Non;
-        } else if (_role == Roles.Admin) {
+    function grantPermission(Roles _role) internal pure returns (Permissions) {
+         if (_role == Roles.Admin) {
             return Permissions.Full;
-        } else if (_role == Roles.Co_Admin) {
-            return Permissions.RW;
-        } else if (_role == Roles.Editor) {
-            return Permissions.Write;
-        } else {
-            return Permissions.Read;
+        } else  {
+            return Permissions.Non;
         }
-    }
-
-    // check if user not dublicate
-    function isValidUser(string memory userName) private view returns (bool) {
-        for (uint256 i = 0; i < users.length; i++) {
-            string memory user = users[i];
-            bool found = compare(userName, user);
-            if (found) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function compare(
-        string memory str1,
-        string memory str2
-    ) private pure returns (bool) {
-        if (bytes(str1).length != bytes(str2).length) {
-            return false;
-        }
-        return
-            keccak256(abi.encodePacked(str1)) ==
-            keccak256(abi.encodePacked(str2));
-    }
-
-    // hashing function
-    function hashData(string memory data) public pure returns (bytes32) {
-        bytes32 hash = keccak256(bytes(data));
-        return hash;
+    
     }
 
     function hashDataSHA(string memory data) public pure returns (bytes32) {
-       // bytes memory sad = bytes(data);
-        //console.logBytes(sad);
         bytes32 hash = sha256(bytes(data));
-        //console.logBytes32(hash);
         return hash;
     }
 
-    // valid from V 0.8.12 concat
-    /*
-    function concatenateStings(
-        string memory a,
-        string memory b
-    ) public pure returns (string memory) {
-        return string.concat(a, b);
-    }
-*/
     //**  view / pure functions (getters) */
     function getPerson(uint256 id) public view returns (Person memory) {
         return people[id];
     }
-    function getUser(uint index) public view returns (string memory) {
+    function getUser(uint index) public view returns (uint256) {
         return users[index];
     }
 
@@ -481,12 +435,15 @@ contract KYC {
         return nationalIDs.length;
     }
 
-    function getNumberOfUsers() public view returns (uint256) {
+    function getNumberOfAdmins() public view returns (uint256) {
         return users.length;
     }
 
     function getLogin(uint256 id) public view returns (bytes32) {
         return signIn[id]; // compare hash with hashed login in the backend
+    }
+    function getImage(uint256 id) public view returns (string memory) {
+        return people[id].info.image; 
     }
     function getEducation(uint256 id) public view returns (Education[] memory) {
         return education[id];
