@@ -13,7 +13,7 @@ error Already_Exist();
 error ID_must_be_greater_than_zero();
 
 /**@title KYC Contract
- * @author Abdalrhman Mostafa
+ * @author Abdalrhman Mostafa and Ahmed Hesham
  * @notice This contract is for adding and retriving customers data
  */
 //TODO use Proxy pattern Contract to save DB isolated
@@ -53,18 +53,14 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string phone_number;
-        // string email; // an array?
         Login sign;
         Additional_Info info;
     }
 
     struct Additional_Info {
         uint256 license_number;
-        //string license_image; // check valid with AI
         string image; // store hash verify idententy
         uint256[] bank_Accounts;
-        //uint256 father_id;
-        //uint256 mother_id;
         string home_address;
         string passport;
         Military_status ms;
@@ -80,13 +76,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string specialization;
         string designation;
         string place;
-        //string[] certificates; // as images
-        // add cv attachment (ipfs hash)
     }
     struct Login {
         string UserName;
         string Password;
-        //string Email;
     }
     // storage vs memory
     mapping(uint256 => Person) internal people; // link person to his id
@@ -112,10 +105,9 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function _authorizeUpgrade(address newImplementation) internal override {}
 
-    //TODO check token boolean if valid | get session of token info
+    //Resteriction
     function OnlyAdmin(uint256 id) internal view {
         Roles role = people[id].role;
-        //TODO check login
         if (role != Roles.Admin) {
             revert KYC__NOT_Have_Access();
         }
@@ -123,8 +115,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     // functions:
     //**  1. Add overloading Person */
-    // TODO : if admin , init hash, normal user later.
-    // Mandatory -> Email?
     function addPerson(
         uint256 cid,
         string memory _name,
@@ -238,14 +228,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ) public {
         OnlyAdmin(cid);
         people[_id].role = Roles(role);
-        //TODO change Permissions
+        Permissions _permission = grantPermission(Roles(role));
+        people[_id].permission = _permission;
     }
 
-    // function editEmail (uint cid, uint _id,string memory email) public
-    // {
-    //     OnlyAdmin(cid);
-    //     people[_id].email = email;
-    // }
     function EditPhone(
         uint256 cid,
         uint256 _id,
