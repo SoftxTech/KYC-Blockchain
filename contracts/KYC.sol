@@ -103,7 +103,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         //_disableInitializers();
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override {}
+    function _authorizeUpgrade(address /*newImplementation*/) internal  view override {
+       if (msg.sender != owner())
+       revert KYC__NOT_Have_Access();
+    }
 
     //Resteriction
     function OnlyAdmin(uint256 id) internal view {
