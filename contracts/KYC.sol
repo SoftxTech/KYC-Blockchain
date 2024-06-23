@@ -49,12 +49,14 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string fullName; // to 4th
         address person_wallet_address; // added manually by admins and editors?
         uint256 bod; // time stamp of birthdate
+        string job;
         Gender gender;
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string phone_number;
         Login sign;
         Additional_Info info;
+        Education edu;
     }
 
     struct Additional_Info {
@@ -71,12 +73,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string place;
         string degree;
     }
-    struct Experiance {
-        uint256 year;
-        string specialization;
-        string designation;
-        string place;
-    }
     struct Login {
         string UserName;
         string Password;
@@ -84,8 +80,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // storage vs memory
     mapping(uint256 => Person) internal people; // link person to his id
     mapping(uint256 => bytes32) internal signIn; // id -> hashed login info
-    mapping(uint256 => Education[]) internal education; //
-    mapping(uint256 => Experiance[]) internal experiance; //
 
     // State Variables
     uint256[] private nationalIDs; // keys - prevent dublicate
@@ -103,9 +97,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         //_disableInitializers();
     }
 
-    function _authorizeUpgrade(address /*newImplementation*/) internal  view override {
-       if (msg.sender != owner())
-       revert KYC__NOT_Have_Access();
+    function _authorizeUpgrade(
+        address /*newImplementation*/
+    ) internal view override {
+        if (msg.sender != owner()) revert KYC__NOT_Have_Access();
     }
 
     //Resteriction
@@ -122,9 +117,14 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 cid,
         string memory _name,
         uint256 _id,
+        string memory _job,
         uint256 _bod,
         Gender _gender,
-        Roles _role
+        Roles _role,
+        uint256 year,
+        string memory specialization,
+        string memory place,
+        string memory degree
     ) public {
         OnlyAdmin(cid);
         if (_id < 0) {
@@ -139,6 +139,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Person memory person; //Person(_id, _name,..,) | Person params = Person({a: 1, b: 2});
         person.NID = _id;
         person.fullName = _name; // get fname , lname
+        person.job = _job;
         person.bod = _bod;
         person.gender = _gender;
         person.role = _role;
@@ -156,6 +157,12 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // Add the new person to the mapping
         people[_id] = person;
         emit AddPerson(_id, _name);
+
+        Education memory ed;
+        ed.year = year;
+        ed.specialization = specialization;
+        ed.place = place;
+        ed.degree = degree;
     }
 
     // admin init (only owner)
@@ -188,11 +195,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Edit Data Functions (for each edit there is gas consumption , we need to reduce the gas consumption)
 
     //** 3. Modify info. Functions */
-    function editName(
-        uint256 cid,
-        uint256 _id,
-        string memory name
-    ) public {
+    function editName(uint256 cid, uint256 _id, string memory name) public {
         OnlyAdmin(cid);
         people[_id].fullName = name;
     }
@@ -206,40 +209,29 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[_id].person_wallet_address = wallet_address;
     }
 
-    function birthOfDate(
-        uint256 cid,
-        uint256 _id,
-        uint256 bod
-    ) public {
+    function birthOfDate(uint256 cid, uint256 _id, uint256 bod) public {
         OnlyAdmin(cid);
         people[_id].bod = bod;
     }
 
-    function editGender(
-        uint256 cid,
-        uint256 _id,
-        uint8 gender
-    ) public {
+    function editGender(uint256 cid, uint256 _id, uint8 gender) public {
         OnlyAdmin(cid);
         people[_id].gender = Gender(gender);
     }
 
-    function editRole(
-        uint256 cid,
-        uint256 _id,
-        uint8 role
-    ) public {
+    function editJob(uint256 cid, uint256 _id, string memory _job) public {
+        OnlyAdmin(cid);
+        people[_id].job = _job;
+    }
+
+    function editRole(uint256 cid, uint256 _id, uint8 role) public {
         OnlyAdmin(cid);
         people[_id].role = Roles(role);
         Permissions _permission = grantPermission(Roles(role));
         people[_id].permission = _permission;
     }
 
-    function EditPhone(
-        uint256 cid,
-        uint256 _id,
-        string memory phone
-    ) public {
+    function EditPhone(uint256 cid, uint256 _id, string memory phone) public {
         OnlyAdmin(cid);
         // TODO if want to remove phone number
         //people[_id].phone_number.push(phone);
@@ -251,104 +243,28 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].info.image = img;
     }
 
-    // Education
-    function addEducation(
-        uint256 cid,
-        uint256 id,
-        uint256 year,
-        string memory specialization,
-        string memory place,
-        string memory degree
-    ) public {
-        OnlyAdmin(cid);
-        Education[] storage tmp = education[id];
-        Education memory edu;
-        edu.degree = degree;
-        edu.place = place;
-        edu.specialization = specialization;
-        edu.year = year;
-        tmp.push(edu);
-        education[id] = tmp;
-    }
-
-    // TODO if remove index
+    //TODO if remove index
     function editEducation(
         uint256 cid,
         uint256 id,
-        uint256 i,
         uint256 year,
         string memory specialization,
         string memory place,
         string memory degree
-    ) public {
+    ) public  {
         OnlyAdmin(cid);
-        education[id][i] = Education(year, specialization, place, degree);
+        people[id].edu.specialization = specialization;
+        people[id].edu.place = place;
+        people[id].edu.degree = degree;
+        people[id].edu.year = year;
     }
 
     function deleteEducation(
         uint256 cid,
-        uint256 id,
-        uint256 i
+        uint256 id
     ) public {
         OnlyAdmin(cid);
-        for (uint256 index = i; index < education[id].length; index++) {
-            if (index != education[id].length - 1) {
-                education[id][index] = education[id][index + 1];
-            }
-        }
-        delete education[id][education[id].length - 1];
-    }
-
-    // Experiance
-    function addExperiance(
-        uint256 cid,
-        uint256 id,
-        uint256 year,
-        string memory specialization,
-        string memory place,
-        string memory designation
-    ) public {
-        OnlyAdmin(cid);
-        Experiance[] storage tmp = experiance[id];
-        Experiance memory exp;
-        exp.designation = designation;
-        exp.specialization = specialization;
-        exp.place = place;
-        exp.year = year;
-        tmp.push(exp);
-        experiance[id] = tmp;
-    }
-
-    // TODO if remove index
-    function editExperiance(
-        uint256 cid,
-        uint256 id,
-        uint256 i,
-        uint256 year,
-        string memory specialization,
-        string memory place,
-        string memory designation
-    ) public {
-        OnlyAdmin(cid);
-        experiance[id][i] = Experiance(
-            year,
-            specialization,
-            designation,
-            place
-        );
-    }
-
-    function deleteExperiance(
-        uint256 cid,
-        uint256 id,
-        uint256 i
-    ) public {
-        OnlyAdmin(cid);
-        for (uint256 index = i; index < experiance[id].length; index++) {
-            if (index != experiance[id].length - 1)
-                experiance[id][index] = experiance[id][index + 1];
-        }
-        delete experiance[id][experiance[id].length - 1];
+        delete  people[id].edu;
     }
 
     function editLicenceNumber(
@@ -388,11 +304,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[_id].info.passport = passport;
     }
 
-    function editMilitaryStatus(
-        uint256 cid,
-        uint256 _id,
-        uint256 ms
-    ) public {
+    function editMilitaryStatus(uint256 cid, uint256 _id, uint256 ms) public {
         OnlyAdmin(cid);
         people[_id].info.ms = Military_status(ms);
     }
@@ -428,15 +340,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         hashLogInInfo(_id, _password);
     }
 
-    function logIN(uint256 _id, string memory pass)
-        public
-        view
-        returns (
-            bool,
-            string memory,
-            uint256
-        )
-    {
+    function logIN(
+        uint256 _id,
+        string memory pass
+    ) public view returns (bool, string memory, uint256) {
         if (
             hashDataSHA(string.concat(Strings.toString(_id), pass)).length !=
             signIn[_id].length
@@ -510,33 +417,5 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function getImage(uint256 id) public view returns (string memory) {
         return people[id].info.image;
-    }
-
-    function getEducation(uint256 id) public view returns (Education[] memory) {
-        return education[id];
-    }
-
-    function getEducationI(uint256 id, uint256 i)
-        public
-        view
-        returns (Education memory)
-    {
-        return education[id][i];
-    }
-
-    function getExperiance(uint256 id)
-        public
-        view
-        returns (Experiance[] memory)
-    {
-        return experiance[id];
-    }
-
-    function getExperianceI(uint256 id, uint256 i)
-        public
-        view
-        returns (Experiance memory)
-    {
-        return experiance[id][i];
     }
 }
