@@ -1,6 +1,6 @@
 const networkConfig = {
   31337: {
-    name: "localhost",
+    name: "hardhat",
     callbackGasLimit: "500000", // 500,000 gas
   },
   11155111: {
@@ -9,7 +9,7 @@ const networkConfig = {
   },
 };
 
-const developmentChains = ["sepolia", "localhost"];
+const developmentChains = ["sepolia", "hardhat"];
 
 module.exports = {
   networkConfig,
