@@ -8,7 +8,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
 
   log("----------------------------------------------------");
-  const arguments = [];
+  const arguments = []; // TODO proxy interact instead of constructor
   const kyc = await deploy("KYC", {
     from: deployer,
     args: arguments,
