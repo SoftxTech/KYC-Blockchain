@@ -88,7 +88,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // edit field log
 
     function initialize(uint256 _id) public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init();
         __UUPSUpgradeable_init();
         addPerson(_id, msg.sender, "");
         //_disableInitializers();
@@ -249,7 +249,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string memory specialization,
         string memory place,
         string memory degree
-    ) public  {
+    ) public {
         OnlyAdmin(cid);
         people[id].edu.specialization = specialization;
         people[id].edu.place = place;
@@ -257,12 +257,9 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].edu.year = year;
     }
 
-    function deleteEducation(
-        uint256 cid,
-        uint256 id
-    ) public {
+    function deleteEducation(uint256 cid, uint256 id) public {
         OnlyAdmin(cid);
-        delete  people[id].edu;
+        delete people[id].edu;
     }
 
     function editLicenceNumber(

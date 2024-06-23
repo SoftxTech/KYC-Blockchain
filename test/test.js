@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers, upgrades } = require("hardhat");
 
-describe("KYC -Proxy Edition", function () {
+describe("KYC", function () {
   let KYC;
   let kyc;
   let owner;
@@ -18,7 +18,7 @@ describe("KYC -Proxy Edition", function () {
 
   it("Should initialize with an admin", async function () {
     const admin = await kyc.getPerson(1);
-    expect(admin.role).to.equal(0); // Admin role
+    expect(admin.role).to.equal(0n); // Admin role
   });
 
   it("Should add a person by admin", async function () {
@@ -38,8 +38,8 @@ describe("KYC -Proxy Edition", function () {
 
     const person = await kyc.getPerson(2);
     expect(person.fullName).to.equal("John Doe");
-    expect(person.gender).to.equal(0); // Male
-    expect(person.role).to.equal(1); // User
+    expect(person.gender).to.equal(0n); // Male
+    expect(person.role).to.equal(1n); // User
   });
 
   it("Should revert when non-admin tries to add a person", async function () {
@@ -113,7 +113,7 @@ describe("KYC -Proxy Edition", function () {
     await kyc.connect(owner).deletePerson(1, 2);
 
     const person = await kyc.getPerson(2);
-    expect(person.NID).to.equal(0); // Default value after deletion
+    expect(person.NID).to.equal(0n); // Default value after deletion
   });
 
   it("Should edit education details", async function () {
@@ -137,7 +137,7 @@ describe("KYC -Proxy Edition", function () {
 
     const p = await kyc.getPerson(2);
     expect(p.edu.degree).to.equal("Master");
-    expect(p.edu.year).to.equal(2023);
+    expect(p.edu.year).to.equal(2023n);
     expect(p.edu.specialization).to.equal("Computer Science");
     expect(p.edu.place).to.equal("MIT");
   });
@@ -159,7 +159,7 @@ describe("KYC -Proxy Edition", function () {
 
     await kyc.connect(owner).deleteEducation(1, 2);
     const p = await kyc.getPerson(2);
-    expect(p.edu.year).to.equal(0);
+    expect(p.edu.year).to.equal(0n);
   });
 
   it("Should login successfully with correct credentials", async function () {
@@ -237,7 +237,7 @@ describe("KYC -Proxy Edition", function () {
 
     await kyc.birthOfDate(1, 2, 2000);
     const p = await kyc.getPerson(2);
-    expect(p.bod).to.equal(2000);
+    expect(p.bod).to.equal(2000n);
   });
   it("Should Edit Date of Birth Successfully", async function () {
     await kyc.connect(owner).addPerson(
@@ -256,7 +256,7 @@ describe("KYC -Proxy Edition", function () {
 
     await kyc.birthOfDate(1, 2, 2000);
     const p = await kyc.getPerson(2);
-    expect(p.bod).to.equal(2000);
+    expect(p.bod).to.equal(2000n);
   });
   it("Should Edit Gender Successfully", async function () {
     await kyc.connect(owner).addPerson(
@@ -275,7 +275,7 @@ describe("KYC -Proxy Edition", function () {
 
     await kyc.editGender(1, 2, 1);
     const p = await kyc.getPerson(2);
-    expect(p.gender).to.equal(1);
+    expect(p.gender).to.equal(1n);
   });
   it("Should Edit Job Successfully", async function () {
     await kyc.connect(owner).addPerson(
@@ -332,6 +332,6 @@ describe("KYC -Proxy Edition", function () {
 
     await kyc.editRole(1, 2, 0);
     const p = await kyc.getPerson(2);
-    expect(p.role).to.equal(0);
+    expect(p.role).to.equal(0n);
   });
 });
