@@ -11,9 +11,9 @@ describe("KYC -Proxy Edition", function () {
 
   beforeEach(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
-    KYC = await ethers.getContractFactory("KYC -Proxy Edition");
+    KYC = await ethers.getContractFactory("KYC");
     kyc = await upgrades.deployProxy(KYC, [1], { initializer: "initialize" });
-    await kyc.deployed();
+    await kyc.waitForDeployment();
   });
 
   it("Should initialize with an admin", async function () {
@@ -24,48 +24,69 @@ describe("KYC -Proxy Edition", function () {
   it("Should add a person by admin", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "John",
-      "Doe",
       "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
       0, // Male
-      1 // User role
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
     const person = await kyc.getPerson(2);
-    expect(person.fName).to.equal("John");
-    expect(person.lName).to.equal("Doe");
     expect(person.fullName).to.equal("John Doe");
     expect(person.gender).to.equal(0); // Male
     expect(person.role).to.equal(1); // User
   });
 
   it("Should revert when non-admin tries to add a person", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+    const p = await kyc.getPerson(2);
     await expect(
-      kyc.connect(addr1).addPerson(
-        1, // cid of the admin
-        "John",
-        "Doe",
+      kyc.connect(owner).addPerson(
+        2, // cid of the admin
         "John Doe",
-        2,
+        3,
+        "engineer",
         946684800, // bod (timestamp for 2000-01-01)
         0, // Male
-        1 // User role
+        1, // User role
+        2000,
+        "sc",
+        "azhar",
+        "bc"
       )
-    ).to.be.revertedWith("KYC__NOT_Have_Access()");
+    ).to.be.revertedWithCustomError(kyc, "KYC__NOT_Have_Access");
   });
 
   it("Should allow admin to edit person's wallet", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "Jane",
-      "Doe",
-      "Jane Doe",
+      "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
-      1, // Female
-      1 // User role
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
     await kyc.connect(owner).editWallet(1, 2, addr1.address);
@@ -77,13 +98,16 @@ describe("KYC -Proxy Edition", function () {
   it("Should allow admin to delete a person", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "Jane",
-      "Doe",
-      "Jane Doe",
+      "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
-      1, // Female
-      1 // User role
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
     await kyc.connect(owner).deletePerson(1, 2);
@@ -92,103 +116,222 @@ describe("KYC -Proxy Edition", function () {
     expect(person.NID).to.equal(0); // Default value after deletion
   });
 
-  it("Should add education details", async function () {
-    await kyc.connect(owner).addPerson(
-      1, // cid of the admin
-      "John",
-      "Doe",
-      "John Doe",
-      2,
-      946684800, // bod (timestamp for 2000-01-01)
-      0, // Male
-      1 // User role
-    );
-
-    await kyc
-      .connect(owner)
-      .addEducation(1, 2, 2022, "Computer Science", "MIT", "Bachelor");
-
-    const education = await kyc.getEducation(2);
-    expect(education.length).to.equal(1);
-    expect(education[0].specialization).to.equal("Computer Science");
-  });
-
   it("Should edit education details", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "John",
-      "Doe",
       "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
       0, // Male
-      1 // User role
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
     await kyc
       .connect(owner)
-      .addEducation(1, 2, 2022, "Computer Science", "MIT", "Bachelor");
-    await kyc
-      .connect(owner)
-      .editEducation(1, 2, 0, 2023, "Computer Science", "MIT", "Master");
+      .editEducation(1, 2, 2023, "Computer Science", "MIT", "Master");
 
-    const education = await kyc.getEducation(2);
-    expect(education.length).to.equal(1);
-    expect(education[0].degree).to.equal("Master");
+    const p = await kyc.getPerson(2);
+    expect(p.edu.degree).to.equal("Master");
+    expect(p.edu.year).to.equal(2023);
+    expect(p.edu.specialization).to.equal("Computer Science");
+    expect(p.edu.place).to.equal("MIT");
   });
 
   it("Should delete education details", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "John",
-      "Doe",
       "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
       0, // Male
-      1 // User role
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
-    await kyc
-      .connect(owner)
-      .addEducation(1, 2, 2022, "Computer Science", "MIT", "Bachelor");
-    await kyc.connect(owner).deleteEducation(1, 2, 0);
-
-    const education = await kyc.getEducation(2);
-    expect(education.length).to.equal(0);
+    await kyc.connect(owner).deleteEducation(1, 2);
+    const p = await kyc.getPerson(2);
+    expect(p.edu.year).to.equal(0);
   });
 
   it("Should login successfully with correct credentials", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "Jane",
-      "Doe",
-      "Jane Doe",
+      "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
-      1, // Female
-      1 // User role
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
     await kyc.connect(owner).EditLogin(2, "newpassword");
 
     const loginSuccess = await kyc.logIN(2, "newpassword");
-    expect(loginSuccess).to.be.true;
+    expect(loginSuccess[0]).to.be.true;
   });
 
   it("Should fail login with incorrect credentials", async function () {
     await kyc.connect(owner).addPerson(
       1, // cid of the admin
-      "Jane",
-      "Doe",
-      "Jane Doe",
+      "John Doe",
       2,
+      "engineer",
       946684800, // bod (timestamp for 2000-01-01)
-      1, // Female
-      1 // User role
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
     );
 
     const loginSuccess = await kyc.logIN(2, "wrongpassword");
-    expect(loginSuccess).to.be.false;
+    expect(loginSuccess[0]).to.be.false;
+  });
+  it("Should Edit FullName Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.editName(1, 2, "Ahmed Hesham");
+    const p = await kyc.getPerson(2);
+    expect(p.fullName).to.equal("Ahmed Hesham");
+  });
+  it("Should Edit Date of Birth Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.birthOfDate(1, 2, 2000);
+    const p = await kyc.getPerson(2);
+    expect(p.bod).to.equal(2000);
+  });
+  it("Should Edit Date of Birth Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.birthOfDate(1, 2, 2000);
+    const p = await kyc.getPerson(2);
+    expect(p.bod).to.equal(2000);
+  });
+  it("Should Edit Gender Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.editGender(1, 2, 1);
+    const p = await kyc.getPerson(2);
+    expect(p.gender).to.equal(1);
+  });
+  it("Should Edit Job Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.editJob(1, 2, "Pilot");
+    const p = await kyc.getPerson(2);
+    expect(p.job).to.equal("Pilot");
+  });
+  it("Should Edit Phone Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.EditPhone(1, 2, "01114134796");
+    const p = await kyc.getPerson(2);
+    expect(p.phone_number).to.equal("01114134796");
+  });
+  it("Should Edit Role Successfully", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      2000,
+      "sc",
+      "azhar",
+      "bc"
+    );
+
+    await kyc.editRole(1, 2, 0);
+    const p = await kyc.getPerson(2);
+    expect(p.role).to.equal(0);
   });
 });
