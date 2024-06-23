@@ -11,9 +11,9 @@ describe("KYC -Proxy Edition", function () {
 
   beforeEach(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
-    KYC = await ethers.getContractFactory("KYC -Proxy Edition");
+    KYC = await ethers.getContractFactory("KYC");
     kyc = await upgrades.deployProxy(KYC, [1], { initializer: "initialize" });
-    await kyc.deployed();
+    await kyc.waitForDeployment();
   });
 
   it("Should initialize with an admin", async function () {

@@ -32,9 +32,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     enum Permissions {
         // could ignore and rely on roles only
         Non,
-        Read, // uint256 0 -> Read
-        Write,
-        RW,
         Full // Delete and RW
     }
     enum Military_status {
@@ -239,7 +236,8 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     // Additional Info Functions
-    function setImage(uint256 id, string memory img) public {
+    function setImage(uint256 cid, uint256 id, string memory img) public {
+        OnlyAdmin(cid);
         people[id].info.image = img;
     }
 
