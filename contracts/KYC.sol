@@ -88,7 +88,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // edit field log
 
     function initialize(uint256 _id) public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         addPerson(_id, msg.sender, "");
         //_disableInitializers();
@@ -118,10 +118,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 _bod,
         Gender _gender,
         Roles _role,
-        uint256 year,
-        string memory specialization,
-        string memory place,
-        string memory degree
+        string memory img
     ) public {
         OnlyAdmin(cid);
         if (_id < 0) {
@@ -151,15 +148,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Permissions _permission = grantPermission(_role);
         person.permission = _permission;
         nationalIDs.push(_id); // prevent dublicate
+        person.info.image = img;
         // Add the new person to the mapping
         people[_id] = person;
         emit AddPerson(_id, _name);
-
-        Education memory ed;
-        ed.year = year;
-        ed.specialization = specialization;
-        ed.place = place;
-        ed.degree = degree;
     }
 
     // admin init (only owner)
@@ -230,8 +222,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function EditPhone(uint256 cid, uint256 _id, string memory phone) public {
         OnlyAdmin(cid);
-        // TODO if want to remove phone number
-        //people[_id].phone_number.push(phone);
         people[_id].phone_number = phone;
     }
 
@@ -249,7 +239,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string memory specialization,
         string memory place,
         string memory degree
-    ) public {
+    ) public  {
         OnlyAdmin(cid);
         people[id].edu.specialization = specialization;
         people[id].edu.place = place;
@@ -257,9 +247,12 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].edu.year = year;
     }
 
-    function deleteEducation(uint256 cid, uint256 id) public {
+    function deleteEducation(
+        uint256 cid,
+        uint256 id
+    ) public {
         OnlyAdmin(cid);
-        delete people[id].edu;
+        delete  people[id].edu;
     }
 
     function editLicenceNumber(
@@ -390,8 +383,12 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //**  view / pure functions (getters) */
-    function getPerson(uint256 id) public view returns (Person memory) {
-        return people[id];
+    function getPerson(uint256 id) public view returns (Person memory,bool) {
+        if (people[id].NID == 0)
+        {
+            return (people[id] , false);
+        }
+        return (people[id],true);
     }
 
     function getUser(uint256 index) public view returns (uint256) {
