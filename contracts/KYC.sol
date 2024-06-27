@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
-//import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -16,7 +15,7 @@ error ID_must_be_greater_than_zero();
  * @author Abdalrhman Mostafa and Ahmed Hesham
  * @notice This contract is for adding and retriving customers data
  */
-//TODO use Proxy pattern Contract to save DB isolated
+
 contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Types declartion
     // when add role, call function that add sutable permisson assigned to the rule
@@ -88,7 +87,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // edit field log
 
     function initialize(uint256 _id) public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init(); // msg.sender
         __UUPSUpgradeable_init();
         addPerson(_id, msg.sender, "");
         //_disableInitializers();
@@ -231,7 +230,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].info.image = img;
     }
 
-    //TODO if remove index
     function editEducation(
         uint256 cid,
         uint256 id,
@@ -239,7 +237,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string memory specialization,
         string memory place,
         string memory degree
-    ) public  {
+    ) public {
         OnlyAdmin(cid);
         people[id].edu.specialization = specialization;
         people[id].edu.place = place;
@@ -247,12 +245,9 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].edu.year = year;
     }
 
-    function deleteEducation(
-        uint256 cid,
-        uint256 id
-    ) public {
+    function deleteEducation(uint256 cid, uint256 id) public {
         OnlyAdmin(cid);
-        delete  people[id].edu;
+        delete people[id].edu;
     }
 
     function editLicenceNumber(
@@ -269,7 +264,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 _id,
         uint256 bank_Accounts
     ) public {
-        // TODO if remove
         OnlyAdmin(cid);
         people[_id].info.bank_Accounts.push(bank_Accounts);
     }
@@ -351,7 +345,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         );
     }
 
-    // TODO hashing login known user , later Email / user
     function hashLogInInfo(uint256 _id, string memory pass) internal {
         signIn[_id] = hashDataSHA(string.concat(Strings.toString(_id), pass));
     }
@@ -383,12 +376,11 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //**  view / pure functions (getters) */
-    function getPerson(uint256 id) public view returns (Person memory,bool) {
-        if (people[id].NID == 0)
-        {
-            return (people[id] , false);
+    function getPerson(uint256 id) public view returns (Person memory, bool) {
+        if (people[id].NID == 0) {
+            return (people[id], false);
         }
-        return (people[id],true);
+        return (people[id], true);
     }
 
     function getUser(uint256 index) public view returns (uint256) {

@@ -2,7 +2,7 @@
 require("@nomiclabs/hardhat-ethers");
 require("@openzeppelin/hardhat-upgrades");
 require("@nomiclabs/hardhat-etherscan");
-require("@nomicfoundation/hardhat-chai-matchers");
+require("@nomicfoundation/hardhat-chai-matchers"); // for testing
 /** @type import('hardhat/config').HardhatUserConfig */
 // require("hardhat-gas-reporter");
 require("dotenv").config();
