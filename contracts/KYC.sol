@@ -239,7 +239,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string memory specialization,
         string memory place,
         string memory degree
-    ) public  {
+    ) public {
         OnlyAdmin(cid);
         people[id].edu.specialization = specialization;
         people[id].edu.place = place;
@@ -247,12 +247,9 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].edu.year = year;
     }
 
-    function deleteEducation(
-        uint256 cid,
-        uint256 id
-    ) public {
+    function deleteEducation(uint256 cid, uint256 id) public {
         OnlyAdmin(cid);
-        delete  people[id].edu;
+        delete people[id].edu;
     }
 
     function editLicenceNumber(
@@ -299,30 +296,37 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function deletePerson(uint256 cid, uint256 _id) public {
         OnlyAdmin(cid);
-        uint256 iid = 0;
-        uint256 uid = 0;
-        for (iid; iid < nationalIDs.length; iid++) {
-            if (nationalIDs[iid] == _id) break;
-        }
-
-        for (uint256 index = iid; index < nationalIDs.length - 1; index++) {
-            if (index != nationalIDs.length - 1)
-                nationalIDs[index] = nationalIDs[index + 1];
-        }
-
+        removeIdFromArray(nationalIDs, _id);
         if (people[_id].role == Roles.Admin) {
-            for (uid; uid < users.length; uid++) {
-                if (users[uid] == _id) break;
-            }
-            for (uint256 index = uid; index < users.length - 1; index++) {
-                if (index != users.length - 1) users[index] = users[index + 1];
-            }
+            removeIdFromArray(users, _id);
         }
-
         delete people[_id];
     }
 
+    function removeIdFromArray(uint256[] storage array, uint256 _id) internal {
+        uint256 index = findIndex(array, _id);
+        if (index < array.length) {
+            array[index] = array[array.length - 1];
+            array.pop();
+        }
+    }
+
+    function findIndex(
+        uint256[] storage array,
+        uint256 _id
+    ) internal view returns (uint256) {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (array[i] == _id) {
+                return i;
+            }
+        }
+        return array.length; // Return an out-of-bound index if not found
+    }
+
     function EditLogin(uint256 _id, string memory _password) public {
+        if (people[_id].role != Roles.Admin) {
+            revert KYC__NOT_Have_Access();
+        }
         people[_id].sign.Password = _password;
         //string memory _user = people[_id].sign.UserName;
         hashLogInInfo(_id, _password);
@@ -383,12 +387,11 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //**  view / pure functions (getters) */
-    function getPerson(uint256 id) public view returns (Person memory,bool) {
-        if (people[id].NID == 0)
-        {
-            return (people[id] , false);
+    function getPerson(uint256 id) public view returns (Person memory, bool) {
+        if (people[id].NID == 0) {
+            return (people[id], false);
         }
-        return (people[id],true);
+        return (people[id], true);
     }
 
     function getUser(uint256 index) public view returns (uint256) {
