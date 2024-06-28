@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers, upgrades } = require("hardhat");
 
-describe("KYC -Proxy Edition", function () {
+describe("KYC", function () {
   let KYC;
   let kyc;
   let owner;

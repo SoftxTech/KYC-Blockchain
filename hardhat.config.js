@@ -10,7 +10,7 @@ require("dotenv").config();
 // require("hardhat-deploy");
 
 const SEPOLIA_RPC_URL =
-  "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ETHERSCAN_API_KEY;
+  "https://eth-sepolia.g.alchemy.com/v2/f00pyatElSyaeqXkwnsdH6tcUmmbMTvd"; // + process.env.ALCKEMY_API;
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 

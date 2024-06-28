@@ -3,29 +3,30 @@ const { developmentChains } = require("../helper-hardhat-config");
 const { verify } = require("../utils/verify");
 require("dotenv").config();
 
-module.exports = async (/* { getNamedAccounts, deployments } */) => {
-  // const { deploy, log } = deployments;
-  // const { deployer } = await getNamedAccounts();
+module.exports = async () => {
+  console.log("start");
+  const kycFactory = await ethers.getContractFactory("KYC");
+  const kycProxy = await upgrades.deployProxy(kycFactory, [3010], {
+    initializer: "initialize",
+  });
+  await kycProxy.deployed();
+  console.log("deployed");
+  const networkConfig = {
+    [network.name]: {
+      etherscanApiKey: process.env.ETHERSCAN_API_KEY,
+    },
+  };
 
-  console.log("----------------------------------------------------");
-  const arguments = []; // TODO proxy interact instead of constructor
-  // const kyc = await deploy("KYC", {
-  //   from: deployer,
-  //   args: arguments,
-  //   log: true,
-  //   waitConfirmations: network.config.blockConfirmations || 1,
-  // });
-  KYC = await ethers.getContractFactory("KYC");
-  kyc = await upgrades.deployProxy(KYC, [3010], { initializer: "initialize" });
-  await kyc.waitForDeployment();
-  console.log("Done.");
-  // Verify the deployment
   if (
-    !developmentChains.includes(network.name) &&
-    process.env.ETHERSCAN_API_KEY
+    networkConfig[network.name] &&
+    networkConfig[network.name].etherscanApiKey
   ) {
-    console.log("Verifying...");
-    await verify(kyc.address, arguments);
+    console.log("Veryfing...");
+    await verify(
+      kycProxy.address,
+      [],
+      networkConfig[network.name].etherscanApiKey
+    );
   }
 };
 
