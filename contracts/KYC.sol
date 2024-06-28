@@ -50,7 +50,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string phone_number;
-        Login sign;
         Additional_Info info;
         Education edu;
     }
@@ -69,10 +68,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string place;
         string degree;
     }
-    struct Login {
-        string UserName;
-        string Password;
-    }
+
     // storage vs memory
     mapping(uint256 => Person) internal people; // link person to his id
     mapping(uint256 => bytes32) internal signIn; // id -> hashed login info
@@ -87,7 +83,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // edit field log
 
     function initialize(uint256 _id) public initializer {
-        __Ownable_init(); // msg.sender
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         addPerson(_id, msg.sender, "");
         //_disableInitializers();
@@ -183,11 +179,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Edit Data Functions (for each edit there is gas consumption , we need to reduce the gas consumption)
 
     //** 3. Modify info. Functions */
-    function editName(
-        uint256 cid,
-        uint256 _id,
-        string memory name
-    ) public {
+    function editName(uint256 cid, uint256 _id, string memory name) public {
         OnlyAdmin(cid);
         people[_id].fullName = name;
     }
@@ -201,38 +193,22 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[_id].person_wallet_address = wallet_address;
     }
 
-    function birthOfDate(
-        uint256 cid,
-        uint256 _id,
-        uint256 bod
-    ) public {
+    function birthOfDate(uint256 cid, uint256 _id, uint256 bod) public {
         OnlyAdmin(cid);
         people[_id].bod = bod;
     }
 
-    function editGender(
-        uint256 cid,
-        uint256 _id,
-        uint8 gender
-    ) public {
+    function editGender(uint256 cid, uint256 _id, uint8 gender) public {
         OnlyAdmin(cid);
         people[_id].gender = Gender(gender);
     }
 
-    function editJob(
-        uint256 cid,
-        uint256 _id,
-        string memory _job
-    ) public {
+    function editJob(uint256 cid, uint256 _id, string memory _job) public {
         OnlyAdmin(cid);
         people[_id].job = _job;
     }
 
-    function editRole(
-        uint256 cid,
-        uint256 _id,
-        uint8 role
-    ) public {
+    function editRole(uint256 cid, uint256 _id, uint8 role) public {
         OnlyAdmin(cid);
         people[_id].role = Roles(role);
         Permissions _permission = grantPermission(Roles(role));
@@ -243,21 +219,13 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function EditPhone(
-        uint256 cid,
-        uint256 _id,
-        string memory phone
-    ) public {
+    function EditPhone(uint256 cid, uint256 _id, string memory phone) public {
         OnlyAdmin(cid);
         people[_id].phone_number = phone;
     }
 
     // Additional Info Functions
-    function setImage(
-        uint256 cid,
-        uint256 id,
-        string memory img
-    ) public {
+    function setImage(uint256 cid, uint256 id, string memory img) public {
         OnlyAdmin(cid);
         people[id].info.image = img;
     }
@@ -318,11 +286,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[_id].info.passport = passport;
     }
 
-    function editMilitaryStatus(
-        uint256 cid,
-        uint256 _id,
-        uint256 ms
-    ) public {
+    function editMilitaryStatus(uint256 cid, uint256 _id, uint256 ms) public {
         OnlyAdmin(cid);
         people[_id].info.ms = Military_status(ms);
     }
@@ -344,11 +308,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function findIndex(uint256[] storage array, uint256 _id)
-        internal
-        view
-        returns (uint256)
-    {
+    function findIndex(
+        uint256[] storage array,
+        uint256 _id
+    ) internal view returns (uint256) {
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] == _id) {
                 return i;
@@ -361,20 +324,13 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         if (people[_id].role != Roles.Admin) {
             revert KYC__NOT_Have_Access();
         }
-        //people[_id].sign.Password = _password;
-        //string memory _user = people[_id].sign.UserName;
         hashLogInInfo(_id, _password);
     }
 
-    function logIN(uint256 _id, string memory pass)
-        public
-        view
-        returns (
-            bool,
-            string memory,
-            uint256
-        )
-    {
+    function logIN(
+        uint256 _id,
+        string memory pass
+    ) public view returns (bool, string memory, uint256) {
         if (
             hashDataSHA(string.concat(Strings.toString(_id), pass)).length !=
             signIn[_id].length
@@ -406,7 +362,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ) internal returns (Person memory) {
         bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
         signIn[_id] = _hash; // updateLogin hashing
-        person.sign.UserName = Strings.toString(_id);
         return person;
     }
 

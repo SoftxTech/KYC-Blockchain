@@ -4,13 +4,14 @@ const { verify } = require("../utils/verify");
 require("dotenv").config();
 
 async function main() {
-  console.log("start");
+  console.log("starting...");
   const kycFactory = await ethers.getContractFactory("KYC");
   const kycProxy = await upgrades.deployProxy(kycFactory, [3010], {
     initializer: "initialize",
   });
   await kycProxy.waitForDeployment();
-  console.log("deployed");
+  console.log("deployed at: " + (await kycProxy.getAddress()));
+
   const networkConfig = {
     [network.name]: {
       etherscanApiKey: process.env.ETHERSCAN_API_KEY,
@@ -19,7 +20,8 @@ async function main() {
 
   if (
     networkConfig[network.name] &&
-    networkConfig[network.name].etherscanApiKey
+    networkConfig[network.name].etherscanApiKey &&
+    network.name == "sepolia"
   ) {
     console.log("Veryfing...");
 
@@ -31,8 +33,5 @@ async function main() {
   }
 }
 main();
-// module.exports = async () => {
-
-// };
 
 module.exports.tags = ["all", "kyc", "main"];
