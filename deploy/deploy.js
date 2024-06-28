@@ -3,13 +3,13 @@ const { developmentChains } = require("../helper-hardhat-config");
 const { verify } = require("../utils/verify");
 require("dotenv").config();
 
-module.exports = async () => {
+async function main() {
   console.log("start");
   const kycFactory = await ethers.getContractFactory("KYC");
   const kycProxy = await upgrades.deployProxy(kycFactory, [3010], {
     initializer: "initialize",
   });
-  await kycProxy.deployed();
+  await kycProxy.waitForDeployment();
   console.log("deployed");
   const networkConfig = {
     [network.name]: {
@@ -22,12 +22,17 @@ module.exports = async () => {
     networkConfig[network.name].etherscanApiKey
   ) {
     console.log("Veryfing...");
+
     await verify(
-      kycProxy.address,
+      await kycProxy.getAddress(),
       [],
       networkConfig[network.name].etherscanApiKey
     );
   }
-};
+}
+main();
+// module.exports = async () => {
+
+// };
 
 module.exports.tags = ["all", "kyc", "main"];
