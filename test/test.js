@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers, upgrades } = require("hardhat");
 
-describe("KYC", function () {
+describe("KYC -Proxy Edition", function () {
   let KYC;
   let kyc;
   let owner;
@@ -63,6 +63,45 @@ describe("KYC", function () {
         "img.jpg"
       )
     ).to.be.revertedWithCustomError(kyc, "KYC__NOT_Have_Access");
+  });
+  it("Should revert error when person is already ON SYSTEM", async function () {
+    await kyc.connect(owner).addPerson(
+      1, // cid of the admin
+      "John Doe",
+      2,
+      "engineer",
+      946684800, // bod (timestamp for 2000-01-01)
+      0, // Male
+      1, // User role
+      "img.jpg"
+    );
+    const p = await kyc.getPerson(2);
+    await expect(
+      kyc.connect(owner).addPerson(
+        1, // cid of the admin
+        "John Doe",
+        2,
+        "engineer",
+        946684800, // bod (timestamp for 2000-01-01)
+        0, // Male
+        1, // User role
+        "img.jpg"
+      )
+    ).to.be.revertedWithCustomError(kyc, "Already_Exist");
+  });
+  it("Should revert error when person id is zero", async function () {
+    await expect(
+      kyc.connect(owner).addPerson(
+        1, // cid of the admin
+        "John Doe",
+        0,
+        "engineer",
+        946684800, // bod (timestamp for 2000-01-01)
+        0, // Male
+        1, // User role
+        "img.jpg"
+      )
+    ).to.be.revertedWithCustomError(kyc, "ID_must_be_greater_than_zero");
   });
 
   it("Should allow admin to edit person's wallet", async function () {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
+//import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -15,7 +16,7 @@ error ID_must_be_greater_than_zero();
  * @author Abdalrhman Mostafa and Ahmed Hesham
  * @notice This contract is for adding and retriving customers data
  */
-
+//TODO use Proxy pattern Contract to save DB isolated
 contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // Types declartion
     // when add role, call function that add sutable permisson assigned to the rule
@@ -50,6 +51,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         Roles role; // in contract
         Permissions permission; // give permission for each field? , allow companies to take nessesary permissions to show filed
         string phone_number;
+        Login sign;
         Additional_Info info;
         Education edu;
     }
@@ -68,7 +70,10 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string place;
         string degree;
     }
-
+    struct Login {
+        string UserName;
+        string Password;
+    }
     // storage vs memory
     mapping(uint256 => Person) internal people; // link person to his id
     mapping(uint256 => bytes32) internal signIn; // id -> hashed login info
@@ -83,7 +88,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // edit field log
 
     function initialize(uint256 _id) public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init();
         __UUPSUpgradeable_init();
         addPerson(_id, msg.sender, "");
         //_disableInitializers();
@@ -116,7 +121,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string memory img
     ) public {
         OnlyAdmin(cid);
-        if (_id < 0) {
+        if (_id <= 0) {
             revert ID_must_be_greater_than_zero();
         }
         // Check if the ID already exists
@@ -155,7 +160,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         address _wallet,
         string memory img
     ) internal {
-        if (_id < 0) {
+        if (_id <= 0) {
             revert ID_must_be_greater_than_zero();
         }
 
@@ -213,7 +218,6 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[_id].role = Roles(role);
         Permissions _permission = grantPermission(Roles(role));
         people[_id].permission = _permission;
-
         if (role == 1) {
             removeIdFromArray(users, _id);
         }
@@ -230,6 +234,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         people[id].info.image = img;
     }
 
+    //TODO if remove index
     function editEducation(
         uint256 cid,
         uint256 id,
@@ -264,6 +269,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         uint256 _id,
         uint256 bank_Accounts
     ) public {
+        // TODO if remove
         OnlyAdmin(cid);
         people[_id].info.bank_Accounts.push(bank_Accounts);
     }
@@ -324,6 +330,8 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         if (people[_id].role != Roles.Admin) {
             revert KYC__NOT_Have_Access();
         }
+        //people[_id].sign.Password = _password;
+        //string memory _user = people[_id].sign.UserName;
         hashLogInInfo(_id, _password);
     }
 
@@ -350,6 +358,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         );
     }
 
+    // TODO hashing login known user , later Email / user
     function hashLogInInfo(uint256 _id, string memory pass) internal {
         signIn[_id] = hashDataSHA(string.concat(Strings.toString(_id), pass));
     }
@@ -362,6 +371,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ) internal returns (Person memory) {
         bytes32 _hash = hashDataSHA(string.concat(Strings.toString(_id), pass));
         signIn[_id] = _hash; // updateLogin hashing
+        person.sign.UserName = Strings.toString(_id);
         return person;
     }
 
