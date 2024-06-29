@@ -215,21 +215,14 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function editRole(uint256 cid, uint256 _id, uint8 role) public {
         OnlyAdmin(cid);
-        if (role == 1 &&  people[_id].role == Roles(0) ) {
+        if (role == 1 && people[_id].role == Roles(0)) {
             removeIdFromArray(users, _id);
-        }
-        else if (role == 0 &&  people[_id].role == Roles(1) ) {
+        } else if (role == 0 && people[_id].role == Roles(1)) {
             users.push(_id);
         }
         people[_id].role = Roles(role);
         Permissions _permission = grantPermission(Roles(role));
         people[_id].permission = _permission;
-<<<<<<< HEAD
-        if (role == 1) {
-            removeIdFromArray(users, _id);
-        }
-=======
->>>>>>> 2dc8d0c59980c1653e990732e5e952b190d54d5a
     }
 
     function EditPhone(uint256 cid, uint256 _id, string memory phone) public {
