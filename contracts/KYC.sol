@@ -88,7 +88,7 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // edit field log
 
     function initialize(uint256 _id) public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         addPerson(_id, msg.sender, "");
         //_disableInitializers();
@@ -217,7 +217,11 @@ contract KYC is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         OnlyAdmin(cid);
         if (role == 1 && people[_id].role == Roles(0)) {
             removeIdFromArray(users, _id);
+            delete signIn[_id];
         } else if (role == 0 && people[_id].role == Roles(1)) {
+            
+            Person memory person = people[_id];
+            hashLogInInfo(_id, Strings.toString(_id), person);
             users.push(_id);
         }
         people[_id].role = Roles(role);
